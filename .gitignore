@@ -1,0 +1,29 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraform/
+.terraform.lock.hcl
+crash.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Secrets
+.env
+.env.local
+secrets/
+*.key
+*.pem
+
+# Outputs
+*.log
+tfplan.out
+.terraform/
+*.tfstate
+*.tfstate.*

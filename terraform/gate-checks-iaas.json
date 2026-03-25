@@ -1,0 +1,104 @@
+{
+  "category": "IaaS",
+  "version": "1.0",
+  "description": "Infrastructure as Code Gate Checks — BDI-IaC-Convention v1.0",
+  "checks": [
+    {
+      "id": "IAC-01",
+      "name": "All Resources in Terraform",
+      "description": "Every cloud resource (Vercel, Supabase, DNS) is defined in .tf files. Zero manual ClickOps.",
+      "severity": "critical",
+      "gate": "G1 → G2",
+      "verification": "terraform state list shows all expected resources",
+      "automated": true
+    },
+    {
+      "id": "IAC-02",
+      "name": "Remote State + Encryption",
+      "description": "State stored in S3 with server-side encryption (AES-256). No local .tfstate files committed.",
+      "severity": "critical",
+      "gate": "G1 → G2",
+      "verification": "backend.tf points to S3 with encrypt=true",
+      "automated": true
+    },
+    {
+      "id": "IAC-03",
+      "name": "Environment Separation",
+      "description": "Dev and Prod use separate .tfvars files and separate state keys. No cross-contamination.",
+      "severity": "critical",
+      "gate": "G1 → G3",
+      "verification": "environments/ contains dev/, prod/ with distinct backend configs",
+      "automated": true
+    },
+    {
+      "id": "IAC-04",
+      "name": "Secret Management (0 Secrets in Code)",
+      "description": "API tokens, database passwords, private keys NEVER hardcoded. TF_VAR_* env vars or CI secrets only.",
+      "severity": "critical",
+      "gate": "G2 → G4",
+      "verification": "git grep finds zero 'password=' or 'token=' assignments in .tf files",
+      "automated": true
+    },
+    {
+      "id": "IAC-05",
+      "name": "Terraform Lock File in VCS",
+      "description": ".terraform.lock.hcl committed to ensure reproducible provider versions.",
+      "severity": "high",
+      "gate": "G1 → G2",
+      "verification": ".terraform.lock.hcl exists and is tracked",
+      "automated": true
+    },
+    {
+      "id": "IAC-06",
+      "name": "Modular Structure (No Monolith)",
+      "description": "modules/ contains reusable, testable infrastructure components. Root calls modules.",
+      "severity": "high",
+      "gate": "G2 → G3",
+      "verification": "modules/{vercel-project, supabase-project}/ exist with main.tf, variables.tf, outputs.tf",
+      "automated": true
+    },
+    {
+      "id": "IAC-07",
+      "name": "Outputs Exported for Cross-Module References",
+      "description": "Each module exports outputs (project_id, api_url, etc.) for root module consumption.",
+      "severity": "high",
+      "gate": "G3 → G4",
+      "verification": "module.*.output_name referenced in main.tf; outputs.tf present in each module",
+      "automated": true
+    },
+    {
+      "id": "IAC-08",
+      "name": "Variables Validated (Type + Constraint Checks)",
+      "description": "Variables define type, description, validation rules (e.g., env ∈ {dev, prod}).",
+      "severity": "medium",
+      "gate": "G2 → G3",
+      "verification": "variables.tf has type, description, and validation{} blocks where needed",
+      "automated": true
+    },
+    {
+      "id": "IAC-09",
+      "name": "DR / Rollback Runbook",
+      "description": "docs/DISASTER_RECOVERY.md documents: state recovery, destroy sequence, manual rollback steps.",
+      "severity": "high",
+      "gate": "G4 → G5",
+      "verification": "docs/DISASTER_RECOVERY.md exists and outlines state restore, resource destroy order",
+      "automated": false
+    },
+    {
+      "id": "IAC-10",
+      "name": "CI/CD Pipeline Defined",
+      "description": "GitHub Actions (.github/workflows/terraform.yml) enforces plan → review → apply. No direct apply.",
+      "severity": "high",
+      "gate": "G4 → G5",
+      "verification": ".github/workflows/terraform.yml exists with tf plan, tf apply, approval gates",
+      "automated": false
+    }
+  ],
+  "gates": {
+    "G1": "Code review + static validation (tflint, terraform fmt)",
+    "G2": "Automated checks (state, secrets, structure) ✓",
+    "G3": "Manual architectural review (modules, variables, outputs)",
+    "G4": "Staging environment dry-run (terraform plan)",
+    "G5": "Production deployment + DR runbook sign-off"
+  }
+}

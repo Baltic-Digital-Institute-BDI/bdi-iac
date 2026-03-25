@@ -1,0 +1,21 @@
+##############################################################################
+# BDI Lab Console — DEV Environment Variables
+# Standard: BDI-IaC-Convention v1.0 | IAC-03
+##############################################################################
+
+environment = "dev"
+project_name = "bdi-lab-console"
+
+# ─── Vercel ──────────────────────────────────────────────────────────────────
+# vercel_api_token via TF_VAR_vercel_api_token or CI secret
+vercel_team_id  = "REDACTED_CHANGE_ME"
+vercel_git_repo = "Baltic-Digital-Institute-BDI/bdi-lab-console"
+
+# ─── Supabase ────────────────────────────────────────────────────────────────
+# supabase_access_token via TF_VAR_supabase_access_token or CI secret
+# supabase_database_password via TF_VAR_supabase_database_password or CI secret
+supabase_organization_id = "REDACTED_CHANGE_ME"
+supabase_region          = "eu-central-1"
+
+# ─── Application ─────────────────────────────────────────────────────────────
+custom_domain = ""
