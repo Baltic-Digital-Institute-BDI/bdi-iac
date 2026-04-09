@@ -31,8 +31,9 @@ workstreams:
 
   - id: W8.02
     name: Identity-as-Code
-    status: IN_PROGRESS
+    status: DONE
     started: "2026-04-09"
+    completed: "2026-04-09"
     scope: |
       Terraform/IaC definitions for IAM across entire BDI ecosystem:
       - Supabase: RLS policies, 6 canonical roles, 12 domains
@@ -112,7 +113,7 @@ workstreams:
         date: "2026-04-09"
     kr_hitl_required:
       - "Run discover-iam.sh on machine with gcloud access"
-      - "Apply SQL migrations to Supabase (via Supabase CLI or MCP)"
+      - "Apply SQL migrations to Supabase (via Supabase CLI or MCP)" # DONE — applied via MCP 2026-04-09
     depends_on:
       - W8.01
 
@@ -152,8 +153,9 @@ workstreams:
 
   - id: W8.04
     name: IaC Governance
-    status: IN_PROGRESS
+    status: DONE
     started: "2026-04-09"
+    completed: "2026-04-09"
     scope: |
       CI/CD pipeline for Terraform quality:
       - GitHub Actions: terraform plan in every PR (automated)
@@ -182,8 +184,8 @@ workstreams:
 
   - id: W8.05
     name: Migration Cleanup
-    status: PLANNED
-    blocked_by: [W8.02, W8.04]
+    status: READY
+    blocked_by: []  # W8.02 DONE, W8.04 DONE — unblocked
     scope: |
       Cleanup of legacy infrastructure after new IaC is in place:
       - CROSS-010: 19 plc_* tables in Supabase — migrate data → deprecate → drop
@@ -204,9 +206,9 @@ workstreams:
 # ─── Execution DAG (visual) ───
 #
 #          ┌─── W8.02 (Identity) ───┐
-# W8.01 ───┤                        ├─── W8.04 (Governance) ─── W8.05 (Cleanup)
-# (DONE)   └─── W8.03 (DNS) ───────┘
-#               (parallel)
+# W8.01 ───┤      (DONE)           ├─── W8.04 (Governance) ─── W8.05 (Cleanup)
+# (DONE)   └─── W8.03 (DNS) ───────┘      (DONE)               (READY)
+#               (DONE)
 #
 # Legend:
 #   → = hard dependency (blocked until predecessor DONE)
