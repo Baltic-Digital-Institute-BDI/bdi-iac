@@ -63,18 +63,21 @@ variable "project_number" {
 resource "google_service_account" "sa_claude_agent" {
   account_id   = "sa-claude-agent"
   display_name = "Claude Agent (HIGH-013 W6.09 bootstrap DR)"
+  description  = "Bootstrap SA for Claude agent DR fallback. Created 2026-04-08 closing W3.01 gap."
   project      = var.project_id
 }
 
 resource "google_service_account" "sa_bdi_agent" {
   account_id   = "sa-bdi-agent"
   display_name = "sa-bdi-agent"
+  description  = "Machine identity for BDI agent automation (IDP Infrastructure Program)"
   project      = var.project_id
 }
 
 resource "google_service_account" "sa_gha_cicd_deployer" {
   account_id   = "sa-gha-cicd-deployer"
   display_name = "GitHub Actions CI/CD Deployer"
+  description  = "HIGH-013 WIF target SA for GHA OIDC deployments from Baltic-Digital-Institute-BDI org"
   project      = var.project_id
 }
 
@@ -87,18 +90,21 @@ resource "google_service_account" "sa_monitoring_deploy" {
 resource "google_service_account" "sa_console_prod" {
   account_id   = "sa-console-prod"
   display_name = "BDI Lab Console Secrets [prod]"
+  description  = "Service account for GCP Secret Manager access (prod)"
   project      = var.project_id
 }
 
 resource "google_service_account" "sa_console_staging" {
   account_id   = "sa-console-staging"
   display_name = "BDI Lab Console Secrets [staging]"
+  description  = "Service account for GCP Secret Manager access (staging)"
   project      = var.project_id
 }
 
 resource "google_service_account" "sa_console_dev" {
   account_id   = "sa-console-dev"
   display_name = "BDI Lab Console Secrets [dev]"
+  description  = "Service account for GCP Secret Manager access (dev)"
   project      = var.project_id
 }
 
