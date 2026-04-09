@@ -1,16 +1,22 @@
-# HIGH-014 W8.02 Identity-as-Code — GCP IAM Layer
-# Created: 2026-04-09 by Claude agent
-# Status: TEMPLATE — requires `gcloud` discovery to populate actual resource IDs
+# =============================================================================
+# BDI Infrastructure — IAM-as-Code (W8.02 Identity-as-Code)
+# HIGH-014 Everything-as-Code
+# Generated: 2026-04-09 from live GCP discovery (securityReviewer)
+# SSOT: dependency-dag.yaml W8.02 + ADR-014
+# =============================================================================
 #
-# Run discover-iam.sh on a machine with gcloud access to:
-# 1. List all service accounts → populate google_service_account resources
-# 2. List IAM bindings → populate google_secret_manager_secret_iam_member resources
-# 3. terraform import each discovered resource
+# Two layers:
+#   1. Project-level IAM bindings (this file)
+#   2. Per-secret IAM bindings (secret_iam.tf)
 #
-# Backend: same GCS bucket as secrets.tf (bdi-terraform-state)
+# Per-secret bindings follow least-privilege:
+#   sa-console-{env} gets secretAccessor ONLY on {env}-console-* secrets.
+#
+# Audit config: ADMIN_READ + DATA_READ + DATA_WRITE on secretmanager
+# =============================================================================
 
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5"
 
   required_providers {
     google = {
@@ -19,97 +25,242 @@ terraform {
     }
   }
 
-  # Uncomment after first successful plan from CI/CD or local machine with GCS access
-  # backend "gcs" {
-  #   bucket = "bdi-terraform-state"
-  #   prefix = "gcp-iam"
-  # }
+  backend "gcs" {
+    bucket = "bdi-infrastructure-tfstate"
+    prefix = "iam"
+  }
 }
 
 provider "google" {
-  project = "bdi-infrastructure"
-  region  = "europe-west1"
+  project = var.project_id
+  region  = var.region
 }
 
-# ──────────────────────────────────────────────
-# Variables
-# ──────────────────────────────────────────────
+# ─── Variables ───────────────────────────────────────────────────────────────
 
 variable "project_id" {
-  type    = string
-  default = "bdi-infrastructure"
+  description = "GCP project ID"
+  type        = string
+  default     = "bdi-infrastructure"
 }
 
-# Canonical BDI roles mapped to GCP secret access
-variable "secret_access_matrix" {
-  description = "Map of service account → list of secrets it can access"
-  type        = map(list(string))
-  default     = {}
-  # Populated by discover-iam.sh output
-  # Example:
-  # {
-  #   "agent-claude" = ["anthropic-api-key", "github-pat-agent-recovery"]
-  #   "console-prod" = ["supabase-url", "supabase-anon-key", "google-oauth-client-id"]
-  # }
+variable "region" {
+  description = "Default GCP region"
+  type        = string
+  default     = "europe-west1"
 }
 
-# ──────────────────────────────────────────────
-# Service Accounts — partially discovered
-# ──────────────────────────────────────────────
-# Discovery via REST API confirmed 1 SA. Full discovery requires
-# roles/iam.securityReviewer on the SA running discover-iam.sh.
-# sa-claude-agent has only secretmanager.versions.access (correct: least privilege).
-#
-# Known SA (from Supabase Vault bootstrap key):
+variable "project_number" {
+  description = "GCP project number"
+  type        = string
+  default     = "706500299685"
+}
 
-resource "google_service_account" "agent_claude" {
+# ─── Service Accounts (7 custom) ────────────────────────────────────────────
+# GCP-managed service agents (artifactregistry, cloudbuild, etc.) are NOT
+# managed in TF — they're auto-created and auto-bound by Google.
+
+resource "google_service_account" "sa_claude_agent" {
   account_id   = "sa-claude-agent"
-  display_name = "Claude Agent Service Account"
-  description  = "Used by Claude Cowork/Code for secret access and automation"
+  display_name = "Claude Agent (HIGH-013 W6.09 bootstrap DR)"
   project      = var.project_id
 }
 
-# TODO: Run discover-iam.sh with a higher-privileged SA to find remaining SAs.
-# Expected SAs (from secrets topology): console-prod, console-dev, vercel-deploy, n8n-worker
-
-# ──────────────────────────────────────────────
-# IAM Bindings — Secret Manager access per SA
-# ──────────────────────────────────────────────
-# Known binding: sa-claude-agent → bootstrap secrets (3)
-
-resource "google_secret_manager_secret_iam_member" "agent_claude_gcp_sa_key" {
-  project   = var.project_id
-  secret_id = "bootstrap-gcp-sa-key-agent-claude"
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.agent_claude.email}"
+resource "google_service_account" "sa_bdi_agent" {
+  account_id   = "sa-bdi-agent"
+  display_name = "sa-bdi-agent"
+  project      = var.project_id
 }
 
-resource "google_secret_manager_secret_iam_member" "agent_claude_github_pat" {
-  project   = var.project_id
-  secret_id = "bootstrap-github-pat-agent-recovery"
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.agent_claude.email}"
+resource "google_service_account" "sa_gha_cicd_deployer" {
+  account_id   = "sa-gha-cicd-deployer"
+  display_name = "GitHub Actions CI/CD Deployer"
+  project      = var.project_id
 }
 
-resource "google_secret_manager_secret_iam_member" "agent_claude_cf_token" {
-  project   = var.project_id
-  secret_id = "bootstrap-cf-api-token-dns-dr"
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.agent_claude.email}"
+resource "google_service_account" "sa_monitoring_deploy" {
+  account_id   = "sa-monitoring-deploy"
+  display_name = "sa-monitoring-deploy"
+  project      = var.project_id
 }
 
-# TODO: After full discovery, add remaining bindings for other SAs.
+resource "google_service_account" "sa_console_prod" {
+  account_id   = "sa-console-prod"
+  display_name = "BDI Lab Console Secrets [prod]"
+  project      = var.project_id
+}
 
-# ──────────────────────────────────────────────
-# Outputs
-# ──────────────────────────────────────────────
+resource "google_service_account" "sa_console_staging" {
+  account_id   = "sa-console-staging"
+  display_name = "BDI Lab Console Secrets [staging]"
+  project      = var.project_id
+}
+
+resource "google_service_account" "sa_console_dev" {
+  account_id   = "sa-console-dev"
+  display_name = "BDI Lab Console Secrets [dev]"
+  project      = var.project_id
+}
+
+# ─── Project-Level IAM Bindings ─────────────────────────────────────────────
+# Using google_project_iam_member (additive) to avoid clobbering
+# GCP-managed service agent bindings.
+
+# --- sa-claude-agent (2 roles) ---
+resource "google_project_iam_member" "claude_agent_security_reviewer" {
+  project = var.project_id
+  role    = "roles/iam.securityReviewer"
+  member  = "serviceAccount:${google_service_account.sa_claude_agent.email}"
+}
+
+resource "google_project_iam_member" "claude_agent_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.sa_claude_agent.email}"
+}
+
+# --- sa-bdi-agent (1 role) ---
+resource "google_project_iam_member" "bdi_agent_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.sa_bdi_agent.email}"
+}
+
+# --- sa-gha-cicd-deployer (5 roles) ---
+resource "google_project_iam_member" "gha_deployer_cloudfunctions" {
+  project = var.project_id
+  role    = "roles/cloudfunctions.developer"
+  member  = "serviceAccount:${google_service_account.sa_gha_cicd_deployer.email}"
+}
+
+resource "google_project_iam_member" "gha_deployer_token_creator" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountTokenCreator"
+  member  = "serviceAccount:${google_service_account.sa_gha_cicd_deployer.email}"
+}
+
+resource "google_project_iam_member" "gha_deployer_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.sa_gha_cicd_deployer.email}"
+}
+
+resource "google_project_iam_member" "gha_deployer_secret_admin" {
+  project = var.project_id
+  role    = "roles/secretmanager.admin"
+  member  = "serviceAccount:${google_service_account.sa_gha_cicd_deployer.email}"
+}
+
+resource "google_project_iam_member" "gha_deployer_storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.sa_gha_cicd_deployer.email}"
+}
+
+# --- sa-monitoring-deploy (1 role) ---
+# NOTE: roles/owner is overly broad — consider scoping down post-audit
+resource "google_project_iam_member" "monitoring_deploy_owner" {
+  project = var.project_id
+  role    = "roles/owner"
+  member  = "serviceAccount:${google_service_account.sa_monitoring_deploy.email}"
+}
+
+# --- Default Compute SA (GCP-managed, project-level bindings only) ---
+resource "google_project_iam_member" "compute_sa_secret_accessor" {
+  project = var.project_id
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_sa_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_sa_cloudbuild_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_sa_log_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "compute_sa_storage_viewer" {
+  project = var.project_id
+  role    = "roles/storage.objectViewer"
+  member  = "serviceAccount:${var.project_number}-compute@developer.gserviceaccount.com"
+}
+
+# --- Cloud Build SA (GCP-managed, project-level bindings only) ---
+resource "google_project_iam_member" "cloudbuild_sa_artifact_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${var.project_number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "cloudbuild_sa_builder" {
+  project = var.project_id
+  role    = "roles/cloudbuild.builds.builder"
+  member  = "serviceAccount:${var.project_number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "cloudbuild_sa_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${var.project_number}@cloudbuild.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "cloudbuild_sa_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${var.project_number}@cloudbuild.gserviceaccount.com"
+}
+
+# --- KR owner binding ---
+resource "google_project_iam_member" "kr_owner" {
+  project = var.project_id
+  role    = "roles/owner"
+  member  = "user:krzysztof@baltic-digital.org"
+}
+
+# ─── Audit Log Config ───────────────────────────────────────────────────────
+
+resource "google_project_iam_audit_config" "secretmanager_audit" {
+  project = var.project_id
+  service = "secretmanager.googleapis.com"
+
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
+}
+
+# ─── Outputs ─────────────────────────────────────────────────────────────────
 
 output "managed_service_accounts" {
   description = "List of TF-managed service accounts"
-  value       = [google_service_account.agent_claude.email]
+  value = [
+    google_service_account.sa_claude_agent.email,
+    google_service_account.sa_bdi_agent.email,
+    google_service_account.sa_gha_cicd_deployer.email,
+    google_service_account.sa_monitoring_deploy.email,
+    google_service_account.sa_console_prod.email,
+    google_service_account.sa_console_staging.email,
+    google_service_account.sa_console_dev.email,
+  ]
 }
 
-output "managed_iam_bindings" {
-  description = "Count of TF-managed secret IAM bindings"
-  value       = 3
+output "project_iam_binding_count" {
+  description = "Count of TF-managed project-level IAM bindings"
+  value       = 19
 }
