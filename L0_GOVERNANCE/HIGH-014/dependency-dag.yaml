@@ -184,7 +184,9 @@ workstreams:
 
   - id: W8.05
     name: Migration Cleanup
-    status: READY
+    status: DONE
+    started: "2026-04-09"
+    completed: "2026-04-09"
     blocked_by: []  # W8.02 DONE, W8.04 DONE — unblocked
     scope: |
       Cleanup of legacy infrastructure after new IaC is in place:
@@ -207,8 +209,10 @@ workstreams:
 #
 #          ┌─── W8.02 (Identity) ───┐
 # W8.01 ───┤      (DONE)           ├─── W8.04 (Governance) ─── W8.05 (Cleanup)
-# (DONE)   └─── W8.03 (DNS) ───────┘      (DONE)               (READY)
+# (DONE)   └─── W8.03 (DNS) ───────┘      (DONE)               (DONE)
 #               (DONE)
+#
+# ALL 5 WORKSTREAMS COMPLETE — HIGH-014 DONE 2026-04-09
 #
 # Legend:
 #   → = hard dependency (blocked until predecessor DONE)
