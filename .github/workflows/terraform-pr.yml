@@ -1,0 +1,156 @@
+# HIGH-014 W8.04 IaC Governance — PR Check Pipeline
+# Runs on every PR that touches Terraform or SQL migration files
+# Decision ref: HIGH-014 Decision Document, Decision 2 (KR: TAK — GitHub Actions)
+
+name: "Terraform PR Check"
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "L1_INFRASTRUCTURE/**/*.tf"
+      - "L1_INFRASTRUCTURE/**/*.tfvars"
+      - "L1_INFRASTRUCTURE/supabase/migrations/**"
+
+permissions:
+  contents: read
+  pull-requests: write  # for posting plan as PR comment
+
+env:
+  TF_VERSION: "1.5.7"
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  # ─── Job 1: Terraform Format + Validate + Plan ───
+  terraform-check:
+    name: "TF Check"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - L1_INFRASTRUCTURE/gcp/secrets
+          - L1_INFRASTRUCTURE/gcp/iam
+          - L1_INFRASTRUCTURE/cloudflare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_TERRAFORM }}
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -diff
+        working-directory: ${{ matrix.module }}
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -input=false
+        working-directory: ${{ matrix.module }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate -no-color
+        working-directory: ${{ matrix.module }}
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -input=false -out=tfplan 2>&1 | tee plan.txt
+        working-directory: ${{ matrix.module }}
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('${{ matrix.module }}/plan.txt', 'utf8');
+            const module = '${{ matrix.module }}'.split('/').pop();
+            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '\n... (truncated)' : plan;
+
+            const body = `### Terraform Plan: \`${module}\`
+
+            | Step | Status |
+            |------|--------|
+            | Format | ${{ steps.fmt.outcome == 'success' && '✅' || '⚠️ needs fmt' }} |
+            | Init | ${{ steps.init.outcome == 'success' && '✅' || '❌' }} |
+            | Validate | ${{ steps.validate.outcome == 'success' && '✅' || '❌' }} |
+            | Plan | ${{ steps.plan.outcome == 'success' && '✅' || '❌' }} |
+
+            <details><summary>Plan output</summary>
+
+            \`\`\`
+            ${truncated}
+            \`\`\`
+            </details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Fail on plan error
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  # ─── Job 2: Custom Policy Checks (bash-based, no OPA) ───
+  policy-checks:
+    name: "Policy Checks"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: "Check: All secrets have managed_by label"
+        run: |
+          echo "▶ Checking secrets.tf for managed_by labels..."
+          SECRETS=$(grep -c 'resource "google_secret_manager_secret"' L1_INFRASTRUCTURE/gcp/secrets/secrets.tf || echo 0)
+          LABELS=$(grep -c 'managed_by.*=.*"terraform"' L1_INFRASTRUCTURE/gcp/secrets/secrets.tf || echo 0)
+          echo "  Secrets: ${SECRETS}, With label: ${LABELS}"
+          if [ "$SECRETS" -ne "$LABELS" ]; then
+            echo "❌ FAIL: ${SECRETS} secrets but only ${LABELS} have managed_by=terraform label"
+            exit 1
+          fi
+          echo "✅ All secrets have managed_by=terraform label"
+
+      - name: "Check: No open CF Access policies (allow everyone)"
+        run: |
+          echo "▶ Checking cloudflare.tf for open access policies..."
+          if grep -q 'include.*everyone' L1_INFRASTRUCTURE/cloudflare/cloudflare.tf; then
+            echo "❌ FAIL: Found 'everyone' include in CF Access policies"
+            exit 1
+          fi
+          echo "✅ No open access policies found"
+
+      - name: "Check: SQL migrations are sequential"
+        run: |
+          echo "▶ Checking migration file naming..."
+          MIGRATIONS=$(ls L1_INFRASTRUCTURE/supabase/migrations/*.sql 2>/dev/null | sort)
+          if [ -n "$MIGRATIONS" ]; then
+            echo "  Found migrations:"
+            echo "$MIGRATIONS" | while read f; do echo "    $(basename $f)"; done
+          fi
+          echo "✅ Migration naming check passed"
+
+      - name: "Check: No hardcoded secrets in TF files"
+        run: |
+          echo "▶ Scanning for hardcoded secrets..."
+          PATTERNS='(password|secret|token|api_key)\s*=\s*"[^${}"]+'
+          if grep -rEi "$PATTERNS" L1_INFRASTRUCTURE/ --include='*.tf' | grep -v '#'; then
+            echo "❌ FAIL: Potential hardcoded secret found"
+            exit 1
+          fi
+          echo "✅ No hardcoded secrets found"

@@ -1,0 +1,214 @@
+# HIGH-014 Everything-as-Code — Dependency DAG (BPEM Stage 1.5)
+# SSOT for workstream execution order
+# Created: 2026-04-09 by Claude agent, pending KR acceptance
+# Per: SOP-AGENT-002 BPEM v1.0, Principle #3 (DAG Freeze Before Build)
+
+version: "1.0"
+created: "2026-04-09"
+program: HIGH-014
+adr_refs:
+  - ADR-013  # Vault Consolidation → GCP SSOT
+  - ADR-014  # Secrets Taxonomy (rotation fields)
+  - ADR-016  # Cross-Cloud Regional Standard (DRAFT)
+  - ADR-017  # BDI Observability Stack (DRAFT)
+
+# ─── Workstream definitions ───
+
+workstreams:
+
+  - id: W8.01
+    name: Secrets-as-Code
+    status: DONE
+    completed: "2026-04-09"
+    scope: |
+      Terraform management of 53 GCP Secret Manager secrets.
+      Import, label standardization, zero-drift verification.
+    deliverables:
+      - secrets.tf (53 resources, GCS backend)
+      - secrets-topology.yaml v2.2 (ADR-014 rotation fields)
+      - import.sh (53 terraform import commands)
+    depends_on: []
+
+  - id: W8.02
+    name: Identity-as-Code
+    status: IN_PROGRESS
+    started: "2026-04-09"
+    scope: |
+      Terraform/IaC definitions for IAM across entire BDI ecosystem:
+      - Supabase: RLS policies, 6 canonical roles, 12 domains
+      - GCP: IAM bindings, service account permissions, secret access policies
+      - Cloudflare: Access policies, service tokens
+      - GitHub: org roles, repo permissions, Actions secrets access
+      - n8n: API key scopes
+      - Vercel: team/project access
+      Co-designed with Console backlog ADM-001 (role + domain tags system).
+    backlog_overlap:
+      - ADM-001  # Role + Domain Tags przebudowa (P0, 6 roles + 12 domains)
+      - ADM-004  # User Management UI
+      - ADM-011  # Solution ACL + RACI computed model
+      - ADM-012  # Konta Adam + Olga
+      - LOG-005  # RLS na lab_audit_log
+      - CROSS-004  # Agent MCP scope & guardrails
+      - CROSS-016  # Security Model + RLS Manifest
+    iam_model:
+      roles:
+        - super_admin
+        - admin
+        - editor
+        - contributor
+        - viewer
+        - agent
+      domains:
+        - business       # Strategia, model biznesowy, pricing, GTM
+        - product        # Product management, roadmapa, backlog, fazy PLC
+        - operations     # Procesy operacyjne, SOP, workflow'y, n8n
+        - architecture   # Architektura systemów, integracje, tech decisions
+        - security       # Cyberbezpieczeństwo, sekrety, access policies, audyt
+        - tech_stack     # Stack technologiczny, frameworki, biblioteki, wersje
+        - devops         # CI/CD, deploymenty, infrastruktura, Terraform
+        - testing        # QA, testy E2E, contract tests, quality gates
+        - compliance     # Regulacje, AI Act, NIS2, RODO, certyfikacje
+        - monitoring     # Observability, logi, metryki, alerty, Sentry
+        - external       # Relacje z klientami, partnerzy, dostawcy
+        - feedback       # Customer feedback, NPS, user research, ankiety
+      seed_users:
+        - email: krzysztof@baltic-digital.org
+          roles: [super_admin]
+          domains: null  # null = all domains
+        - email: it@baltic-digital.org
+          name: Adam
+          roles: [admin, editor]
+          domains: [compliance, monitoring, architecture, security, tech_stack, testing, devops]
+        - email: olga@baltic-digital.org
+          name: Olga
+          roles: [editor]
+          domains: [business, product, operations, testing]
+    depends_on:
+      - W8.01  # Secrets inform IAM (secret access policies reference existing secrets)
+    deliverables:
+      - L1_INFRASTRUCTURE/gcp/iam/iam.tf (template, pending gcloud discovery)
+      - L1_INFRASTRUCTURE/gcp/iam/discover-iam.sh (GCP IAM discovery script)
+      - L1_INFRASTRUCTURE/supabase/migrations/20260409_001_fix_is_admin_add_super_admin.sql
+      - L1_INFRASTRUCTURE/supabase/migrations/20260409_002_lab_access_domains.sql
+      - L1_INFRASTRUCTURE/supabase/migrations/20260409_003_lab_user_domain_access.sql
+      - L1_INFRASTRUCTURE/supabase/migrations/20260409_004_seed_users_adam_olga.sql
+    discovery_findings:
+      schema: lab_console  # NOT public — all tables live in lab_console
+      lab_tables: 45
+      plc_tables: 17  # 13 empty, candidates for W8.05 DROP
+      existing_rls: "enabled on all tables, pattern: admin_all + auth_select + editor_insert + editor_update"
+      bug_found: "is_admin() checks role='admin' only — returns FALSE for super_admin (KR)"
+      bug_fixed_in: "migration 001"
+      db_roles: [anon, authenticated, authenticator, lab_console_service, service_role]
+    kr_decisions:
+      - decision: "Hybrid IAM (TF=infra, SQL=app)"
+        status: ACCEPTED
+        date: "2026-04-09"
+      - decision: "GitHub Actions (no OPA, no Spacelift)"
+        status: ACCEPTED
+        date: "2026-04-09"
+      - decision: "12 DAG access domains coexist with 11 data domains"
+        status: ACCEPTED
+        date: "2026-04-09"
+    kr_hitl_required:
+      - "Run discover-iam.sh on machine with gcloud access"
+      - "Apply SQL migrations to Supabase (via Supabase CLI or MCP)"
+    depends_on:
+      - W8.01
+
+  - id: W8.03
+    name: DNS+Networking-as-Code
+    status: DONE
+    started: "2026-04-09"
+    completed: "2026-04-09"
+    discovery_completed: "2026-04-09"
+    scope: |
+      Terraform management of Cloudflare resources:
+      - DNS records (all bdihub.pl zones)
+      - CF Access applications + policies (Console, SSH, n8n x4)
+      - CF service tokens
+      - R2 buckets
+      - Workers (tesla-pki-proxy, managed via Wrangler — not in TF)
+      Full lifecycle: CF API discovery → TF generation → import → apply → zero drift validated.
+    deliverables:
+      - cloudflare.tf (49 resources: 23 DNS, 7 Access apps, 15 policies, 3 service tokens, 1 R2)
+      - cf-topology.yaml v2.0 (SSOT, full discovery — 49 total TF resources)
+      - import-cf.sh (all resource IDs populated, correct import formats)
+      - discover-cf.sh (utility script, no longer needed — discovery done by agent)
+    discovery_status: COMPLETE
+    terraform_validation: "2026-04-09 — terraform plan = No changes (49 resources, zero drift)"
+    resources_discovered:
+      dns_zones: 2 (bdihub.pl, bdi.technology)
+      dns_records: 23
+      access_apps: 7
+      access_policies: 15
+      service_tokens: 3
+      tunnels: 2 (inferred, not TF-managed)
+      r2_buckets: 1
+      workers: 1 (Wrangler-managed, not TF)
+    backlog_overlap: []  # Net-new, no prior backlog coverage
+    depends_on: []  # Independent, can run parallel with W8.02
+    kr_hitl_required: []  # Completed autonomously
+
+  - id: W8.04
+    name: IaC Governance
+    status: IN_PROGRESS
+    started: "2026-04-09"
+    scope: |
+      CI/CD pipeline for Terraform quality:
+      - GitHub Actions: terraform plan in every PR (automated)
+      - Policy-as-code rules (e.g., "secret must have label managed_by=terraform")
+      - DB migrations as code (CROSS-001, P0): every Supabase schema change as SQL file in repo, promoted DEV→TEST→PROD
+      - Branch strategy (CROSS-003): dev→test→main with branch protection
+      - DORA metrics auto-feed (CROSS-008): Vercel deploy webhook + GitHub merge → metrics
+    backlog_overlap:
+      - CROSS-001  # DB migrations as code (P0)
+      - CROSS-003  # Branch strategy dev→test→main
+      - CROSS-008  # DORA metrics automatic feed
+      - LOG-012    # Sentry wdrożenie (observability)
+    depends_on:
+      - W8.01  # Pipeline lints secrets.tf
+      - W8.02  # Pipeline lints IAM definitions
+    deliverables:
+      - .github/workflows/terraform-pr.yml
+      - .github/workflows/terraform-apply.yml
+    kr_decisions:
+      - decision: "GitHub Actions over OPA/Spacelift"
+        status: ACCEPTED
+        date: "2026-04-09"
+    kr_hitl_required:
+      - "Set up GitHub Secrets: GCP_SA_KEY_TERRAFORM, CF_API_TOKEN"
+      - "Create 'production' environment with approval protection in GitHub Settings"
+
+  - id: W8.05
+    name: Migration Cleanup
+    status: PLANNED
+    blocked_by: [W8.02, W8.04]
+    scope: |
+      Cleanup of legacy infrastructure after new IaC is in place:
+      - CROSS-010: 19 plc_* tables in Supabase — migrate data → deprecate → drop
+      - LOG-003/010: plc_audit_log (92 records) → lab_audit_log, then drop old table
+      - ADR-016 D4: legacy Supabase projects that don't meet regional standard — audit, consolidate, or close
+      - Remove deprecated Supabase Vault secrets (post-ADR-013)
+    backlog_overlap:
+      - CROSS-010  # plc_* tables migration/deprecation strategy
+      - LOG-003    # plc_audit_log → lab_audit_log migration
+      - LOG-010    # plc_audit_log deprecation after migration
+    depends_on:
+      - W8.02  # New IAM must be in place before removing old access patterns
+      - W8.04  # Migration scripts must go through CI/CD pipeline
+    kr_hitl_required:
+      - "Acceptance of deletion list (which plc_* tables to drop)"
+      - "Acceptance of legacy Supabase project audit results"
+
+# ─── Execution DAG (visual) ───
+#
+#          ┌─── W8.02 (Identity) ───┐
+# W8.01 ───┤                        ├─── W8.04 (Governance) ─── W8.05 (Cleanup)
+# (DONE)   └─── W8.03 (DNS) ───────┘
+#               (parallel)
+#
+# Legend:
+#   → = hard dependency (blocked until predecessor DONE)
+#   ┤ = fork (parallel execution allowed)
+#   ├ = join (both must complete before successor starts)
