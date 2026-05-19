@@ -1,0 +1,123 @@
+{
+  "name": "BDI · F11 Evening Closure Reminder",
+  "_meta": {
+    "owner": "A6 Fabric (deploy) · STU0 (spec)",
+    "authority": "D-STU-082 cron schedules + D-STU-088 W25-Q10 Track 3",
+    "purpose": "Daily 16:30 PL · Slack DM reminder do każdego employee z F11 enrolled list + post #bdi-daily-closure anchor message · KR wrap-up trigger 17:30",
+    "schedule": "30 16 * * 1-5 (Europe/Warsaw · M-F robocze)",
+    "envelope_emits": "control_plane.cp_messages · message_type=F11_CLOSURE_REMINDER",
+    "consumers": ["#bdi-daily-closure", "Slack DM per enrolled employee", "STU0 OR aggregator", "KR digest input"],
+    "sprint": "2 day-2 spec · sprint-3 D-X actual n8n deploy"
+  },
+  "nodes": [
+    {
+      "name": "Cron 16:30 PL M-F",
+      "type": "n8n-nodes-base.cron",
+      "position": [240, 300],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 16,
+              "minute": 30,
+              "weekday": "monday,tuesday,wednesday,thursday,friday"
+            }
+          ]
+        },
+        "timezone": "Europe/Warsaw"
+      }
+    },
+    {
+      "name": "Fetch F10 posts dziś (correlation)",
+      "type": "n8n-nodes-base.supabase",
+      "position": [440, 300],
+      "parameters": {
+        "operation": "select",
+        "tableId": "control_plane.cp_messages",
+        "filterUI": {
+          "filter": [
+            { "column": "message_type", "value": "F10_PRIORITIES" },
+            { "column": "created_at", "value": ">={{ $now.startOf('day').toISO() }}" }
+          ]
+        },
+        "credentials": "supabase-prod-service-role"
+      }
+    },
+    {
+      "name": "Post anchor message",
+      "type": "n8n-nodes-base.slack",
+      "position": [640, 200],
+      "parameters": {
+        "channel": "#bdi-daily-closure",
+        "text": "🌙 **F11 Evening Closure · {{ $now.toFormat('yyyy-MM-dd · cccc') }}**\n\nPora na day-end report (target post by 18:00 PL · KR wrap-up 17:30-18:00).\n\nTemplate:\n```\n🌙 F11 · {Twoje imię} · {data}\n\nDone dziś (vs morning F10):\n✅ ...\n✅ ...\n⏳ ... (% done)\n❌ ... (powód)\n\nNiespodzianki dzisiaj:\n- ...\n\nJutro priorytety (preview F10):\n1. ...\n2. ...\n\nEnergy/mood: {1-5} · Blockers active: ...\n```\n\nFound {{ $node['Fetch F10 posts dziś (correlation)'].length }} F10 posts dziś · correlation auto-linked w cp_messages.",
+        "credentials": "slack-bdi-bot"
+      }
+    },
+    {
+      "name": "Loop · DM each F10 poster",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [640, 400],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "name": "DM employee F11 reminder",
+      "type": "n8n-nodes-base.slack",
+      "position": [840, 400],
+      "parameters": {
+        "channel": "={{ $json['payload']['employee_id'] }}",
+        "text": "🌙 **F11 reminder · {{ $now.toFormat('cccc dd MMM') }}**\n\n90-min reminder · day-end closure (#bdi-daily-closure) target by 18:00 PL.\n\nDziś rano postowałeś F10 · jak idzie execution? Niespodzianki?\n\nJeśli pracujesz wieczorem · post do 22:00 OK · NIE codziennie expected.",
+        "credentials": "slack-bdi-bot"
+      }
+    },
+    {
+      "name": "Emit cp_message envelope",
+      "type": "n8n-nodes-base.supabase",
+      "position": [1040, 300],
+      "parameters": {
+        "operation": "insert",
+        "tableId": "control_plane.cp_messages",
+        "fieldsUI": {
+          "fields": [
+            { "name": "run_id", "value": "={{ $execution.id }}" },
+            { "name": "correlation_id", "value": "={{ $execution.id }}" },
+            { "name": "source_workspace", "value": "n8n-WF-F11" },
+            { "name": "target_workspace", "value": "BDI-ALL" },
+            { "name": "domain", "value": "BDI-GOV" },
+            { "name": "actor_type", "value": "N8N" },
+            { "name": "actor_id", "value": "n8n.workflow.F11-evening-closure" },
+            { "name": "sensitivity_level", "value": "L1_INTERNAL" },
+            { "name": "message_type", "value": "F11_CLOSURE_REMINDER" },
+            { "name": "payload", "value": "={\"reminded_count\": $node['Fetch F10 posts dziś (correlation)'].length, \"date\": $now.toFormat('yyyy-MM-dd')}" }
+          ]
+        },
+        "credentials": "supabase-prod-service-role"
+      }
+    }
+  ],
+  "connections": {
+    "Cron 16:30 PL M-F": {
+      "main": [[{ "node": "Fetch F10 posts dziś (correlation)", "type": "main", "index": 0 }]]
+    },
+    "Fetch F10 posts dziś (correlation)": {
+      "main": [[
+        { "node": "Post anchor message", "type": "main", "index": 0 },
+        { "node": "Loop · DM each F10 poster", "type": "main", "index": 0 }
+      ]]
+    },
+    "Loop · DM each F10 poster": {
+      "main": [[{ "node": "DM employee F11 reminder", "type": "main", "index": 0 }]]
+    },
+    "Post anchor message": {
+      "main": [[{ "node": "Emit cp_message envelope", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "wf-error-handler-cp-dlq"
+  },
+  "active": false,
+  "_deploy_notes": "Set active:true after F10 workflow LIVE · F11 reads F10 correlation · sequence dependency."
+}

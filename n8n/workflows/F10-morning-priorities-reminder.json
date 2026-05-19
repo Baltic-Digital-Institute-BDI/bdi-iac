@@ -1,0 +1,129 @@
+{
+  "name": "BDI · F10 Morning Priorities Reminder",
+  "_meta": {
+    "owner": "A6 Fabric (deploy) · STU0 (spec)",
+    "authority": "D-STU-082 cron schedules + D-STU-088 W25-Q10 Track 3",
+    "purpose": "Daily 08:00 PL · Slack DM reminder do każdego employee z F10/F11 enrolled list + post #bdi-daily-priorities anchor message",
+    "schedule": "0 8 * * 1-5 (Europe/Warsaw · M-F robocze)",
+    "envelope_emits": "control_plane.cp_messages · message_type=F10_PRIORITIES_REMINDER",
+    "consumers": ["#bdi-daily-priorities", "Slack DM per enrolled employee", "STU0 OR aggregator"],
+    "sprint": "2 day-2 spec · sprint-3 D-X actual n8n deploy"
+  },
+  "nodes": [
+    {
+      "name": "Cron 08:00 PL M-F",
+      "type": "n8n-nodes-base.cron",
+      "position": [240, 300],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 8,
+              "minute": 0,
+              "weekday": "monday,tuesday,wednesday,thursday,friday"
+            }
+          ]
+        },
+        "timezone": "Europe/Warsaw"
+      }
+    },
+    {
+      "name": "Fetch enrolled employees",
+      "type": "n8n-nodes-base.supabase",
+      "position": [440, 300],
+      "parameters": {
+        "operation": "select",
+        "tableId": "control_plane.cp_agent_state",
+        "filterUI": {
+          "filter": [
+            {
+              "column": "actor_type",
+              "value": "HUM"
+            },
+            {
+              "column": "metadata->>f10_enrolled",
+              "value": "true"
+            }
+          ]
+        },
+        "credentials": "supabase-prod-service-role"
+      }
+    },
+    {
+      "name": "Post anchor message",
+      "type": "n8n-nodes-base.slack",
+      "position": [640, 200],
+      "parameters": {
+        "channel": "#bdi-daily-priorities",
+        "text": "🌅 **F10 Morning Priorities · {{ $now.toFormat('yyyy-MM-dd · cccc') }}**\n\nDzień dobry zespole! Pora na daily morning priorities (3-5 top tasks per person · target post by 09:30 PL).\n\nTemplate (kopiuj jeśli potrzeba):\n```\n📅 F10 · {Twoje imię} · {data}\n\nTop 3 priorytety dziś:\n1. ...\n2. ...\n3. ...\n\nBlokery: ...\nCzas estymowany: {N}h\n```\n\nKR przegląda 09:00-09:30 PL · ratify/challenge w threads.",
+        "credentials": "slack-bdi-bot"
+      }
+    },
+    {
+      "name": "Loop · DM each employee",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [640, 400],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "name": "DM employee reminder",
+      "type": "n8n-nodes-base.slack",
+      "position": [840, 400],
+      "parameters": {
+        "channel": "={{ $json['slack_user_id'] }}",
+        "text": "🌅 **F10 reminder · {{ $now.toFormat('cccc dd MMM') }}**\n\nCześć! 30-min reminder · daily morning priorities (#bdi-daily-priorities) target by 09:30 PL.\n\nJeśli OOO/sick → post 1-liner: `F10 · {imię} · {data} · OOO · wracam {data}`.\n\nSelf-service install ref: link Drive (post-pilot).",
+        "credentials": "slack-bdi-bot"
+      }
+    },
+    {
+      "name": "Emit cp_message envelope",
+      "type": "n8n-nodes-base.supabase",
+      "position": [1040, 300],
+      "parameters": {
+        "operation": "insert",
+        "tableId": "control_plane.cp_messages",
+        "fieldsUI": {
+          "fields": [
+            { "name": "run_id", "value": "={{ $execution.id }}" },
+            { "name": "correlation_id", "value": "={{ $execution.id }}" },
+            { "name": "source_workspace", "value": "n8n-WF-F10" },
+            { "name": "target_workspace", "value": "BDI-ALL" },
+            { "name": "domain", "value": "BDI-GOV" },
+            { "name": "actor_type", "value": "N8N" },
+            { "name": "actor_id", "value": "n8n.workflow.F10-morning-reminder" },
+            { "name": "sensitivity_level", "value": "L1_INTERNAL" },
+            { "name": "message_type", "value": "F10_PRIORITIES_REMINDER" },
+            { "name": "payload", "value": "={\"reminded_count\": $node['Fetch enrolled employees'].length, \"date\": $now.toFormat('yyyy-MM-dd')}" }
+          ]
+        },
+        "credentials": "supabase-prod-service-role"
+      }
+    }
+  ],
+  "connections": {
+    "Cron 08:00 PL M-F": {
+      "main": [[{ "node": "Fetch enrolled employees", "type": "main", "index": 0 }]]
+    },
+    "Fetch enrolled employees": {
+      "main": [[
+        { "node": "Post anchor message", "type": "main", "index": 0 },
+        { "node": "Loop · DM each employee", "type": "main", "index": 0 }
+      ]]
+    },
+    "Loop · DM each employee": {
+      "main": [[{ "node": "DM employee reminder", "type": "main", "index": 0 }]]
+    },
+    "Post anchor message": {
+      "main": [[{ "node": "Emit cp_message envelope", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": "wf-error-handler-cp-dlq"
+  },
+  "active": false,
+  "_deploy_notes": "Set active:true after A6 Fabric verifies credentials (supabase-prod-service-role + slack-bdi-bot) · post-pilot enrollment · 2026-05-22 target."
+}
