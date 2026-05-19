@@ -1,0 +1,42 @@
+name: gdpr_data_retention_gap
+category: gdpr
+severity: HIGH
+description: |
+  Detects GDPR Art. 5(1)(e) storage-limitation violations · data kept longer than necessary · missing retention schedules.
+pattern_examples:
+  - "User PII retained: 'forever' (no schedule)"
+  - "Backup tapes: 10-year retention, no PII purge"
+  - "Customer record retention: 5 years post-relationship-end (rationale: undocumented)"
+  - "Email logs: indefinite"
+  - "Audit trail with PESEL: 7 years (legal basis undocumented)"
+prompt_template: |
+  You are a GDPR compliance scanner. Analyze the INPUT below for retention gaps under Art. 5(1)(e):
+
+  Required:
+  - Documented retention schedule per data category (purpose limitation + lawful basis)
+  - Defined trigger for deletion / anonymization (relationship-end · contract-end · legal hold expiry)
+  - Backup retention aligned with primary data (or documented exception)
+  - Audit logs: 6 months default (extend only with documented basis)
+  - Special category data (Art. 9): stricter timelines
+
+  Flag undocumented retention, "indefinite/forever", missing trigger, backup misalignment.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - data_category: string       # personal | special_cat | financial | audit | backup
+      excerpt: string
+      gap_type: string            # undocumented | indefinite | no_trigger | backup_mismatch
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Add retention column to Records of Processing Activity (RoPA)"
+    - "Provision deletion/anonymization workflow (n8n cron)"
+    - "Document legal basis for any retention > 1 year"

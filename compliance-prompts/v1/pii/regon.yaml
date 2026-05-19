@@ -1,0 +1,36 @@
+name: pii_regon_detector
+category: pii
+severity: MEDIUM
+description: |
+  Detects Polish REGON (Rejestr Gospodarki Narodowej · 9-digit or 14-digit business registry number).
+  Generally public for corporate entities; flagged INTERNAL when bundled with PESEL/NIP (joinable to natural person).
+pattern_examples:
+  - "REGON: 123456785"
+  - "Numer REGON 14-cyfrowy: 12345678500001"
+  - "regon=363334932"
+  - "Podmiot: ABC sp. z o.o. (REGON 521234567)"
+  - "REGON: 020815773 + PESEL 90010112345"
+prompt_template: |
+  You are a compliance scanner. Analyze the INPUT below for Polish REGON numbers (9 digits or 14 digits, optionally labeled 'REGON').
+
+  9-digit checksum: sum(digits[0..7] * (8,9,2,3,4,5,6,7)) mod 11 == digits[8] (mod 11 == 10 → invalid).
+  14-digit checksum: 9-digit prefix valid AND sum(digits[0..12] * (2,4,8,5,0,9,7,3,6,1,2,4,8)) mod 11 == digits[13].
+
+  Elevate severity to HIGH if REGON appears in the same content window (±200 chars) as a PESEL or natural-person NIP.
+
+  Return JSON conforming to expected_output_schema. REGON does not require masking unless co-occurring with personal data (in which case mask middle 5 digits).
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      position: string
+      confidence: float
+      cooccurs_with_personal_data: bool
+  sensitivity: L1_INTERNAL    # baseline; orchestrator escalates to L2_CONFIDENTIAL when cooccurs_with_personal_data
+  recommended_action:
+    - "When cooccurs_with_personal_data=true → bundle with PESEL/NIP redaction"

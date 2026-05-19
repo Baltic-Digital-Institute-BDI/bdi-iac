@@ -1,0 +1,13 @@
+cases:
+  - id: iso17065-neg-001
+    prompt: iso17065_impartiality_risk_gap
+    input: |
+      Impartiality risk register: reviewed 2026-04 · auditor rotation cap 2 consecutive cycles · COI disclosures: 100% complete · impartiality committee meets quarterly with 2 external members.
+    expected:
+      detected: false
+  - id: iso17065-neg-002
+    prompt: iso17065_management_system_gap
+    input: |
+      Annual internal audit programme covers all 17065 clauses over 3-year cycle · management review 2026-03 with full inputs per §8.5 · CA aging: 1 item < 30 days, all others closed · KPI dashboard live (core.kpi_dashboard_v).
+    expected:
+      detected: false

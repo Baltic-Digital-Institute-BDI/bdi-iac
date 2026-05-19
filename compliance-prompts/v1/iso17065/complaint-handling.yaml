@@ -1,0 +1,42 @@
+name: iso17065_complaint_handling_gap
+category: iso17065
+severity: MEDIUM
+description: |
+  Detects gaps in ISO/IEC 17065 §7.13 complaints + appeals process · publicly accessible · independent review · no retaliation.
+pattern_examples:
+  - "Complaints process: 'email director' (no documented procedure)"
+  - "Appeal review: same person who made original decision"
+  - "Complaints log: 0 entries in 12 months (suspicious for active cert body)"
+  - "Process not publicly available on website"
+  - "Acknowledgment SLA: undefined"
+prompt_template: |
+  You are an ISO/IEC 17065 compliance scanner. Analyze the INPUT below for complaints/appeals process gaps under §7.13:
+
+  Required:
+  - Publicly accessible procedure (website link)
+  - Defined acknowledgment SLA + investigation timeline
+  - Independent reviewer (not involved in original decision)
+  - Confidentiality + no retaliation guarantee
+  - Complaints register with traceability
+  - Trend analysis fed into management review
+
+  Flag missing procedure, no independence, no log, no public access, no trend feed.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - gap_type: string                # no_procedure | no_independence | no_log | no_public | no_trend_feed
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Publish complaints procedure on cert body website"
+    - "Define independent reviewer pool"
+    - "Add complaints metric to monthly management review (PI sekcja 12 Tier 5)"

@@ -1,0 +1,50 @@
+name: nis2_risk_assessment_gap
+category: nis2
+severity: HIGH
+description: |
+  Detects gaps in NIS2 Art. 21 risk management measures (10 minimum baseline controls: policies · IR · BC · supply chain · acquisition · MFA · crypto · access control · asset management · training).
+pattern_examples:
+  - "Risk register last reviewed: 2024-Q3 (→ stale, NIS2 requires annual + post-incident)"
+  - "Critical asset inventory: not maintained"
+  - "Multi-factor authentication: optional for admin accounts"
+  - "Encryption policy: 'when feasible' (← not aligned with NIS2 Art. 21 baseline)"
+  - "Awareness training: ad-hoc, no annual cadence"
+prompt_template: |
+  You are a NIS2 compliance scanner. Analyze the INPUT below for evidence of the 10 minimum risk-management measures (Art. 21):
+
+  1. Policies on risk analysis & system security
+  2. Incident handling
+  3. Business continuity & crisis management
+  4. Supply chain security
+  5. Security in acquisition, development & maintenance
+  6. Effectiveness assessment of measures
+  7. Basic cyber hygiene & training
+  8. Cryptography / encryption policies
+  9. HR security · access control · asset management
+  10. MFA / continuous authentication · secure comms · secure emergency comms
+
+  Flag any control with:
+  - missing entirely (no policy/procedure document found)
+  - stale (last reviewed > 12 months)
+  - optional/discretionary language for required controls (e.g., MFA "when feasible")
+  - missing effectiveness metrics
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - control_id: int             # 1-10 per Art. 21
+      gap_type: string            # missing | stale | optional_required | no_metrics
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Map each gap to BDI ISMS control owner"
+    - "Open improvement plan with target close date <= next quarterly review"
+    - "Cross-reference ISO 27001 control mapping if dual-certified"

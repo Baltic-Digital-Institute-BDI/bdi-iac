@@ -1,0 +1,38 @@
+name: pii_address_detector
+category: pii
+severity: HIGH
+description: |
+  Detects Polish residential / mailing addresses (street + number + postal code + city).
+  GDPR Art.4(1) personal data when residential; corporate HQ addresses are public but L1_INTERNAL when bundled with employee names.
+pattern_examples:
+  - "ul. Marszałkowska 12/5, 00-007 Warszawa"
+  - "al. Niepodległości 22A m. 17, 02-653 Warszawa"
+  - "Adres zamieszkania: Sopocka 8, 80-001 Gdańsk"
+  - "Siedziba: ul. Targowa 32, 80-803 Gdańsk (HQ)"
+  - "Reza Kasztanowa 15, 84-110 Krokowa"
+prompt_template: |
+  You are a compliance scanner. Analyze the INPUT below for Polish postal addresses:
+  - Pattern: `(ul\.|al\.|pl\.) <street> <number>(/<flat>)?, <postal_code> <city>`
+  - Postal code format: `\d{2}-\d{3}`
+  - Common streets: ulica, aleja, plac, osiedle
+
+  Classify each:
+  - residential: paired with personal name or PESEL within ±150 chars, OR labeled `adres zamieszkania`, `adres korespondencyjny osoby fizycznej`
+  - corporate: labeled `siedziba`, `HQ`, `biuro firmy`, `oddział`
+
+  Return JSON conforming to expected_output_schema. Redact street number for residential (`ul. Marszałkowska XX, 00-XXX Warszawa`).
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      position: string
+      classification: string    # residential | corporate
+      confidence: float
+  sensitivity: L2_CONFIDENTIAL  # baseline residential; corporate → L1_INTERNAL
+  recommended_action:
+    - "Residential addresses MUST be redacted in artifacts shared beyond audit perimeter"

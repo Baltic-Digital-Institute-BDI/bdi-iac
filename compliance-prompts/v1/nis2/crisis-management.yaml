@@ -1,0 +1,42 @@
+name: nis2_crisis_management_gap
+category: nis2
+severity: HIGH
+description: |
+  Detects gaps in NIS2 Art. 21(2)(c) business continuity & crisis management · BC plans · DR · backup · crisis comms.
+pattern_examples:
+  - "BCP version: 1.0 (2023) · annual test: not performed"
+  - "DR RTO: 24h · RPO: undefined"
+  - "Backup retention: 7 days · NIS2 essential entity should be 30+"
+  - "Crisis comms tree: missing leadership alternates"
+  - "Tabletop exercise: never conducted"
+prompt_template: |
+  You are a NIS2 compliance scanner. Analyze the INPUT below for business continuity / crisis management gaps:
+
+  Required artifacts:
+  - Documented BCP / DRP with RTO, RPO per critical service
+  - Annual BCP test (tabletop or live failover) with results documented
+  - Backup policy: frequency, retention, off-site copy, encryption, tested restore
+  - Crisis comms plan: roles, alternates, contact tree, external comms templates
+  - Post-incident review / lessons learned process
+
+  Flag missing artifact, undefined RTO/RPO, retention < 30 days for essential entity, no annual test, no crisis comms.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - artifact: string            # BCP | DRP | backup_policy | crisis_comms | tabletop_results
+      gap_type: string            # missing | stale | undefined_metric | retention_too_short
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Open D-OPS continuity backlog"
+    - "Schedule tabletop within 90 days"
+    - "Define RTO/RPO per service tier (5+1 architecture · Studio L1 · Foundation L0)"

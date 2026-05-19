@@ -1,0 +1,46 @@
+name: gdpr_cross_border_transfer_gap
+category: gdpr
+severity: HIGH
+description: |
+  Detects gaps in GDPR Chapter V cross-border transfer safeguards · adequacy decisions · SCCs · BCRs · Transfer Impact Assessment (TIA · Schrems II).
+pattern_examples:
+  - "Vendor: Anthropic (US) · transfer mechanism: 'covered by GDPR'"
+  - "Sub-processor in India · DPA: SCCs · TIA: not performed"
+  - "CDN: Cloudflare US · transfer safeguard: undocumented"
+  - "Marketing analytics: Google Analytics 4 EU · adequacy: relying on EU-US DPF (verify entity certified)"
+  - "Customer support outsource to Philippines · adequacy: none · SCCs: not signed"
+prompt_template: |
+  You are a GDPR compliance scanner. Analyze the INPUT below for transfer safeguard gaps:
+
+  Required for transfer to non-adequacy country (Art. 44-50):
+  - Identify transfer mechanism: adequacy decision · SCCs (2021/914) · BCRs · derogations (Art. 49 narrow)
+  - For SCCs: completed annexes · TIA documenting risk + supplementary measures
+  - For US transfers: verify recipient's EU-US Data Privacy Framework certification (or use SCCs)
+  - Sub-processor cascade: each level documented
+
+  Adequacy countries (EU Commission decisions as of cutoff): Andorra · Argentina · Canada (commercial) · Faroe Islands · Guernsey · Isle of Man · Israel · Japan · Jersey · New Zealand · Republic of Korea · Switzerland · United Kingdom · Uruguay · US (DPF only).
+
+  Flag missing mechanism, missing TIA, undocumented sub-processor, expired SCCs (pre-2021/914).
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - vendor_hint: string
+      destination_country: string
+      transfer_mechanism: string      # adequacy | scc | bcr | derogation | unspecified
+      gap_type: string                # no_mechanism | no_tia | scc_old | dpf_unverified | sub_processor_undocumented
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Update Records of Processing Activity (RoPA) transfer column"
+    - "Generate TIA for each non-adequacy transfer"
+    - "Migrate old SCCs to 2021/914 modules"
+    - "Verify DPF certification at dataprivacyframework.gov for each US recipient"

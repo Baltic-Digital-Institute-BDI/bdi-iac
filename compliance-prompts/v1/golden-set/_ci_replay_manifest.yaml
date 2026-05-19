@@ -1,0 +1,23 @@
+# Lists all golden-set files for CI gate replay
+# Used by .github/workflows/compliance-prompts-ci.yml (added post-merge follow-up)
+version: 1
+positive_sets:
+  - pii_positive.yaml
+  - secrets_positive.yaml
+  - nis2_positive.yaml
+  - gdpr_positive.yaml
+  - iso17065_positive.yaml
+negative_sets:
+  - pii_negative.yaml
+  - secrets_negative.yaml
+  - nis2_negative.yaml
+  - gdpr_negative.yaml
+  - iso17065_negative.yaml
+expected_output_samples:
+  - _expected_output_examples.yaml
+meta_schema:
+  - _prompt_meta_schema.yaml
+gate_thresholds:
+  positive_detection_min: 1.0       # 100% positives MUST detect
+  negative_false_positive_max: 0.0  # 0% negatives may detect
+  block_pr_on_failure: true

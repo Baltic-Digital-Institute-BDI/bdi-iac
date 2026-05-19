@@ -1,0 +1,43 @@
+name: iso17065_competence_evaluation_gap
+category: iso17065
+severity: MEDIUM
+description: |
+  Detects gaps in ISO/IEC 17065 §6.1 personnel competence requirements · auditor qualification · ongoing evaluation · CPD records.
+pattern_examples:
+  - "Auditor competence file: name only, no education/experience evidence"
+  - "Witness audit observation: not performed in last 24 months"
+  - "CPD log: 4h annually (NIS2 + GDPR domain · should be ≥40h technical)"
+  - "Technical expert assignment: by availability, not competence match"
+  - "Auditor calibration meeting: never held"
+prompt_template: |
+  You are an ISO/IEC 17065 compliance scanner. Analyze the INPUT below for competence gaps under §6.1:
+
+  Required per auditor / technical expert:
+  - Qualification record (education · training · work experience · technical knowledge)
+  - Initial evaluation (knowledge test + witness audit) before assignment
+  - Ongoing surveillance: witness audit at defined frequency (typically every 2-3 years)
+  - Continuing Professional Development (CPD) log with minimum hours per scheme
+  - Performance feedback from clients + lead auditor
+  - Calibration meetings to align interpretation
+
+  Flag missing files, no witness, insufficient CPD, no calibration, no performance feedback.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - personnel_role: string          # lead_auditor | auditor | technical_expert | reviewer | decision_maker
+      gap_type: string                # incomplete_file | no_witness | insufficient_cpd | no_calibration | no_feedback
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Complete competence files within 60 days"
+    - "Schedule witness audits for overdue auditors"
+    - "Define CPD minimum (e.g., 40h/year) and track in BDI Academia LMS"

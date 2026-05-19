@@ -1,0 +1,31 @@
+cases:
+  - id: gdpr-pos-001
+    prompt: gdpr_consent_record_gap
+    input: "Newsletter signup form has marketing consent checkbox PRE-CHECKED · withdrawal: contact us by email."
+    expected:
+      detected: true
+      gap_type_must_include: [default_checked]
+  - id: gdpr-pos-002
+    prompt: gdpr_data_retention_gap
+    input: "User profile PII retention: indefinite · backup tapes 10 years."
+    expected:
+      detected: true
+      gap_type_must_include: [indefinite]
+  - id: gdpr-pos-003
+    prompt: gdpr_dpia_missing
+    input: "New AI feature: real-time emotion detection on user video · launch 2026-06-01 · DPIA: not started."
+    expected:
+      detected: true
+      trigger_basis_must_include: [innovative_tech, special_cat]
+  - id: gdpr-pos-004
+    prompt: gdpr_data_subject_rights_gap
+    input: "Account deletion: email support · SLA: undefined · verification: photocopy of ID required."
+    expected:
+      detected: true
+      min_evidence_count: 2
+  - id: gdpr-pos-005
+    prompt: gdpr_cross_border_transfer_gap
+    input: "Customer support outsource to Philippines · transfer mechanism: undocumented."
+    expected:
+      detected: true
+      gap_type_must_include: [no_mechanism]

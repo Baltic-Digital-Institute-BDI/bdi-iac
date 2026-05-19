@@ -1,0 +1,35 @@
+name: pii_nip_detector
+category: pii
+severity: HIGH
+description: |
+  Detects Polish NIP (Numer Identyfikacji Podatkowej · tax ID · 10-digit) in source materials.
+  GDPR Art.4(1) personal data when paired with natural-person context; corporate NIPs are public but flagged as INTERNAL.
+pattern_examples:
+  - "NIP: 123-456-32-18"
+  - "NIP kontrahenta: 5252344078"
+  - "nip = '7791807277'"
+  - "Faktura wystawiona dla PL5252344078"
+  - "tax_id_pl=1234567890"
+prompt_template: |
+  You are a compliance scanner. Analyze the INPUT below for occurrences of Polish NIP (10 digits, optionally with hyphens or 'PL' prefix). NIP checksum: digits[0..8] weighted by (6,5,7,2,3,4,5,6,7) mod 11 must equal digits[9]; if mod 11 == 10, NIP is invalid.
+
+  Distinguish:
+  - corporate NIP (paired with company name) → sensitivity L1_INTERNAL
+  - sole-proprietor / natural-person NIP (paired with personal name or PESEL) → sensitivity L2_CONFIDENTIAL
+
+  Return JSON conforming to expected_output_schema. Redact middle 4 digits (format `XXX-XXXX-XX` → `XXX-****-XX`).
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      position: string
+      confidence: float
+      is_natural_person: bool
+  sensitivity: L2_CONFIDENTIAL   # default; orchestrator overrides to L1_INTERNAL if !is_natural_person
+  recommended_action:
+    - "If natural_person=true and surfaces in public artifact → STOP-4 (PII Shield A5)"

@@ -1,0 +1,42 @@
+name: gdpr_data_subject_rights_gap
+category: gdpr
+severity: HIGH
+description: |
+  Detects gaps in operationalizing GDPR data subject rights (Art. 15-22) · access · rectification · erasure · restriction · portability · objection · automated-decision-making.
+pattern_examples:
+  - "User wants account deletion: 'contact support' (no self-serve)"
+  - "Data export endpoint: not implemented"
+  - "DSAR fulfillment SLA: not defined"
+  - "Right to object to marketing: opt-out only via email · 7-day SLA"
+  - "Automated rejection decisions: no human-review path"
+prompt_template: |
+  You are a GDPR compliance scanner. Analyze the INPUT below for DSR operational gaps:
+
+  Required:
+  - Self-serve or documented channel for each right (access · rectification · erasure · restriction · portability · objection · ADM challenge)
+  - 1-month response SLA (extendable to 3 months for complex requests)
+  - Verification procedure (identity confirmation without excessive friction)
+  - Logging of DSR requests + outcomes (no PII in logs)
+  - For ADM (Art. 22): human review on request, meaningful info about logic
+
+  Flag missing channel, no SLA, no verification, no ADM challenge path.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - dsr_right: string             # access | rectification | erasure | restriction | portability | objection | adm_challenge
+      gap_type: string              # no_channel | no_sla | no_verification | no_log | no_human_review
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Add DSR workflow to n8n (intake → triage → fulfillment → log)"
+    - "Provision DSR endpoint per product · self-serve where feasible"
+    - "Document SLA in privacy notice"

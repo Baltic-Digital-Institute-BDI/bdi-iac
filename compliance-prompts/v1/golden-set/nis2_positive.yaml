@@ -1,0 +1,36 @@
+cases:
+  - id: nis2-pos-001
+    prompt: nis2_incident_disclosure_gap
+    input: |
+      Incident: ransomware attack detected 2026-05-10 14:00 UTC.
+      CSIRT NASK notification: NOT YET SENT (as of 2026-05-13).
+    expected:
+      detected: true
+      gap_type_must_include: [missing_24h_warning]
+  - id: nis2-pos-002
+    prompt: nis2_risk_assessment_gap
+    input: "MFA policy: optional for administrator accounts. Encryption: 'when feasible'."
+    expected:
+      detected: true
+      min_evidence_count: 2
+  - id: nis2-pos-003
+    prompt: nis2_supply_chain_gap
+    input: "Critical vendor list maintained · security questionnaires: not on file for any of 12 vendors."
+    expected:
+      detected: true
+      gap_type_must_include: [missing_assessment]
+  - id: nis2-pos-004
+    prompt: nis2_crisis_management_gap
+    input: "BCP version 1.0 (2023). Annual test: not performed in 2024 or 2025."
+    expected:
+      detected: true
+      gap_type_must_include: [stale]
+  - id: nis2-pos-005
+    prompt: nis2_reporting_timeline_violation
+    input: |
+      Incident detected: 2026-05-15 09:00 UTC.
+      CSIRT notified: 2026-05-18 10:00 UTC.
+      Delta: ~73h. SLA: 24h.
+    expected:
+      detected: true
+      overshoot_hours_min: 49

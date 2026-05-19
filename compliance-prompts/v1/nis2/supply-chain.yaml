@@ -1,0 +1,42 @@
+name: nis2_supply_chain_gap
+category: nis2
+severity: HIGH
+description: |
+  Detects gaps in NIS2 Art. 21(2)(d) supply-chain security · direct suppliers and service providers risk management.
+pattern_examples:
+  - "Vendor list maintained; security assessments: not on file"
+  - "SaaS provider: Anthropic API · DPA: present · SLA: present · security questionnaire: NOT REQUESTED"
+  - "Subcontractor risk register: missing"
+  - "Critical service provider (Vercel) · contract reviewed 2023-12 (stale)"
+  - "Third-party access to prod: 4 vendors · no quarterly review"
+prompt_template: |
+  You are a NIS2 compliance scanner. Analyze the INPUT below for supply-chain security gaps:
+
+  Required evidence:
+  - Vendor inventory with criticality classification (critical / important / standard)
+  - Security questionnaire / due diligence per critical vendor (SOC2 · ISO27001 · pen-test summary)
+  - Contract clauses: incident notification, audit rights, data location, sub-processor list
+  - Quarterly review of third-party access entitlements
+  - Sub-processor cascade visibility (sub-sub-processors documented)
+
+  Flag missing artifacts, stale reviews (>12 months for critical), or contracts without NIS2-aligned clauses.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - vendor_hint: string         # vendor name if discernible, else "unspecified"
+      gap_type: string            # missing_assessment | stale_review | missing_contract_clause | sub_processor_unknown | access_review_overdue
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Add to vendor risk backlog · A5 Shield owner"
+    - "Trigger DocuSign DPA refresh if contract gap"
+    - "Schedule quarterly access entitlement review"

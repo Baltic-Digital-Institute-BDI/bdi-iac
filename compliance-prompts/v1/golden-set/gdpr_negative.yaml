@@ -1,0 +1,17 @@
+cases:
+  - id: gdpr-neg-001
+    prompt: gdpr_consent_record_gap
+    input: |
+      Marketing consent: opt-in checkbox (default unchecked) · granular toggles (newsletter / product updates / partners) · withdrawal: self-serve in profile settings · consent log retained 7 years.
+    expected:
+      detected: false
+  - id: gdpr-neg-002
+    prompt: gdpr_data_retention_gap
+    input: "User profile retention: 24 months post-account-closure · backup retention aligned · audit log 6 months."
+    expected:
+      detected: false
+  - id: gdpr-neg-003
+    prompt: gdpr_cross_border_transfer_gap
+    input: "Vendor: AWS EU-Central-1 (Frankfurt) · processing entirely within EEA · no cross-border transfer."
+    expected:
+      detected: false

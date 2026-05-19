@@ -1,0 +1,39 @@
+name: pii_email_detector
+category: pii
+severity: MEDIUM
+description: |
+  Detects email addresses · GDPR Art.4(1) personal data unless clearly role-account / corporate alias.
+pattern_examples:
+  - "Kontakt: jan.kowalski@example.pl"
+  - "Email: anna.nowak+filter@gmail.com"
+  - "Send to: support@bdi.local (role)"
+  - "ndr-bounce-1234@srv.example.com"
+  - "ldap_dn: cn=user, mail=user@corp.local"
+prompt_template: |
+  You are a compliance scanner. Analyze the INPUT below for email addresses (RFC 5322 simplified: local-part@domain).
+
+  Classify each match:
+  - personal: local-part is firstname.lastname or firstname_lastname or has digits suggesting personal alias (e.g., `jan.kowalski@`)
+  - role: local-part in {support, info, contact, hello, admin, noreply, no-reply, postmaster, abuse, security, help, sales, biuro, kontakt}
+  - service: local-part contains `bounce`, `mailer-daemon`, `notification`, automated patterns
+
+  Sensitivity:
+  - personal → L2_CONFIDENTIAL
+  - role / service → L0_PUBLIC
+
+  Return JSON conforming to expected_output_schema. Mask local-part beyond first 2 chars when personal (format `ja***@example.pl`).
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      position: string
+      classification: string    # personal | role | service
+      confidence: float
+  sensitivity: L2_CONFIDENTIAL  # orchestrator downgrades when all matches are role/service
+  recommended_action:
+    - "Mask personal emails in artifacts (preview, search results, exports)"

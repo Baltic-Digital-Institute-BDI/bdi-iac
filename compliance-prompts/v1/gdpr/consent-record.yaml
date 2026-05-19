@@ -1,0 +1,41 @@
+name: gdpr_consent_record_gap
+category: gdpr
+severity: HIGH
+description: |
+  Detects gaps in GDPR Art. 7 consent record-keeping · proof of consent (when · how · scope · withdrawal mechanism).
+pattern_examples:
+  - "Newsletter signup: implicit (no opt-in checkbox)"
+  - "Cookie banner: 'OK' button only · no granular controls"
+  - "Form: marketing consent default-checked"
+  - "Consent log: not retained beyond session"
+  - "Withdrawal mechanism: 'email us' (no in-app)"
+prompt_template: |
+  You are a GDPR compliance scanner. Analyze the INPUT below for consent gaps under Art. 7:
+
+  Required elements:
+  - Freely given · specific · informed · unambiguous (opt-in, not opt-out)
+  - Granular per purpose (marketing vs. analytics vs. functional)
+  - Withdrawal as easy as giving consent
+  - Proof of consent retained (who · when · scope · channel)
+  - For minors (<16 PL): parental consent + age gate
+
+  Flag implicit consent, default-checked boxes, single-button banners, lack of withdrawal mechanism, missing consent log.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      gap_type: string            # implicit | default_checked | not_granular | no_withdrawal | no_proof | no_age_gate
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Update consent UX (opt-in default, granular toggles, persistent withdrawal control)"
+    - "Provision consent log table (immutable, append-only)"
+    - "Add age gate for minor-targeting touch points"

@@ -1,0 +1,47 @@
+name: nis2_incident_disclosure_gap
+category: nis2
+severity: HIGH
+description: |
+  Detects gaps in mandatory NIS2 incident disclosure (Art. 23) · 24h early warning · 72h incident notification · 1-month final report timeline.
+  Scope: essential / important entities under NIS2 directive (transposed to PL via UoKSC).
+pattern_examples:
+  - "Incident: ransomware attack 2026-05-10 · CSIRT NASK notification: NOT YET SENT"
+  - "OT outage 14h · disclosure status: internal only"
+  - "DDoS detection 2026-04-22 · 72h window expired · no notification on file"
+  - "Cyber incident playbook: 'notify legal within 5 days' (← stale · NIS2 requires 24h)"
+  - "Annex 1 entity: nie ma rejestru zdarzeń CSIRT"
+prompt_template: |
+  You are a NIS2 compliance scanner. Analyze the INPUT below (incident logs · runbooks · governance docs) for gaps in Article 23 disclosure obligations:
+
+  Required controls:
+  1. Early warning to CSIRT (PL: CSIRT NASK or sector-specific) within **24 hours** of becoming aware of significant incident
+  2. Incident notification within **72 hours** (impact + IoCs + cross-border indicators)
+  3. Final report within **1 month**
+  4. Cross-border notification when impact affects other Member States
+
+  Look for:
+  - Incidents older than 24h with no CSIRT notification field/log
+  - Runbook timelines exceeding 24/72/30-day SLAs
+  - Missing CSIRT/regulator contact in IR playbook
+  - Reference to repealed NIS1 (Directive 2016/1148) without NIS2 update
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string
+      gap_type: string          # missing_24h_warning | missing_72h_notification | missing_final_report | missing_cross_border | stale_runbook
+      affected_entity_class: string  # essential | important | unclear
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Open D-OPS gap entry · assign to A5 Shield + Mariusz R-Compliance"
+    - "Update IR runbook with NIS2 SLA timers (24h/72h/30d)"
+    - "Add CSIRT NASK contact + sectoral CSIRT to runbook"
+    - "Schedule tabletop within 30 days to validate disclosure timeline"

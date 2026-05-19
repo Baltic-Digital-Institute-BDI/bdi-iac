@@ -1,0 +1,42 @@
+name: iso17065_document_control_gap
+category: iso17065
+severity: MEDIUM
+description: |
+  Detects gaps in ISO/IEC 17065 §8 document control · version control · approval · review cadence · obsolete withdrawal.
+pattern_examples:
+  - "Procedure document: no version number"
+  - "Last review date missing on policy"
+  - "Multiple copies of QMS manual circulating · master copy unclear"
+  - "Obsolete forms in active use folder"
+  - "Approval signature: 'TBD'"
+prompt_template: |
+  You are an ISO/IEC 17065 compliance scanner. Analyze the INPUT below for document control gaps under §8:
+
+  Required per controlled document:
+  - Unique identifier · version · approval date · approver
+  - Review cadence (annual or per material change) with last review date
+  - Distribution list / location (single source of truth)
+  - Obsolete document handling (marked + withdrawn from active locations)
+  - Change history
+
+  Flag missing version, no approver, stale review (>annual), unclear master, obsolete in active use.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - document_ref: string
+      gap_type: string                # no_version | no_approver | stale_review | obsolete_active | no_change_history
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Adopt GOV-002 Pattern A (frontmatter version control) per BDI standard"
+    - "Migrate to single source of truth (canonical Drive folder)"
+    - "Withdraw obsolete documents to _archive/"

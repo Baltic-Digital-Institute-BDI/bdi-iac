@@ -1,0 +1,42 @@
+name: iso17065_impartiality_risk_gap
+category: iso17065
+severity: MEDIUM
+description: |
+  Detects gaps in ISO/IEC 17065 §4.2 impartiality risk identification + management for certification body activities.
+  Scope: BDI Cert (CER) workspace · zaplecze do akredytacji PCA.
+pattern_examples:
+  - "Auditor X audited same client twice in 24 months · rotation: not documented"
+  - "Cert body director also sits on client's advisory board (conflict undisclosed)"
+  - "Impartiality committee: not convened in 12 months"
+  - "Risk register: 'no impartiality risks identified' (boilerplate)"
+  - "Consulting service offered to clients undergoing certification (prohibited)"
+prompt_template: |
+  You are an ISO/IEC 17065 compliance scanner. Analyze the INPUT below for impartiality risk gaps under §4.2:
+
+  Required:
+  - Impartiality risk register (annual review + on material change)
+  - Auditor rotation policy (per client · cap on consecutive cycles)
+  - Conflict-of-interest disclosure (auditors · committee members · directors)
+  - Impartiality committee with external members · meeting cadence
+  - Separation of certification from consulting / training
+
+  Flag missing register, stale review, missing rotation, COI undisclosed, consulting conflict, no committee.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - gap_type: string              # no_register | stale | no_rotation | undisclosed_coi | consulting_conflict | no_committee
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Open finding in cert-body QMS"
+    - "Schedule impartiality committee meeting within 30 days"
+    - "Implement auditor rotation per ISO 17065 + IAF MD 22"
