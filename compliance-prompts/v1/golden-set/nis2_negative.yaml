@@ -1,0 +1,22 @@
+cases:
+  - id: nis2-neg-001
+    prompt: nis2_incident_disclosure_gap
+    input: |
+      Incident detected 2026-05-15 09:00 UTC.
+      Early warning CSIRT NASK: 2026-05-15 18:00 UTC (within 24h).
+      72h notification: 2026-05-17 12:00 UTC (within 72h).
+      Final report submitted: 2026-06-10 (within 30 days).
+    expected:
+      detected: false
+  - id: nis2-neg-002
+    prompt: nis2_risk_assessment_gap
+    input: "MFA mandatory for all admin · encryption at rest AES-256 + TLS 1.3 in transit · annual ISMS review 2026-Q1."
+    expected:
+      detected: false
+  - id: nis2-neg-003
+    prompt: nis2_supply_chain_gap
+    input: |
+      Vendor inventory: 12 critical · 8 important · 22 standard.
+      Each critical vendor: SOC2 Type II on file (refreshed annually) · DPA signed · sub-processor list disclosed.
+    expected:
+      detected: false

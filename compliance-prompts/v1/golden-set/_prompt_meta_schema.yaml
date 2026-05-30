@@ -1,0 +1,40 @@
+# Meta-schema validating every prompt .yaml in v1/<category>/
+# Used by CI workflow .github/workflows/compliance-prompts-ci.yml (post-merge follow-up)
+$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://raw.githubusercontent.com/Baltic-Digital-Institute-BDI/bdi-iac/main/compliance-prompts/v1/golden-set/_prompt_meta_schema.yaml"
+type: object
+required: [name, category, severity, description, pattern_examples, prompt_template, expected_output_schema]
+additionalProperties: false
+properties:
+  name:
+    type: string
+    pattern: "^[a-z][a-z0-9_]{2,63}$"
+  category:
+    type: string
+    enum: [pii, secrets, nis2, gdpr, iso17065]
+  severity:
+    type: string
+    enum: [LOW, MEDIUM, HIGH, CRITICAL]
+  description:
+    type: string
+    minLength: 20
+  pattern_examples:
+    type: array
+    minItems: 3
+    maxItems: 7
+    items: { type: string }
+  prompt_template:
+    type: string
+    minLength: 200
+    description: "MUST contain '{{content}}' placeholder · MUST instruct redaction · MUST forbid echoing live secrets"
+  expected_output_schema:
+    type: object
+    required: [detected, evidence, sensitivity, recommended_action]
+    properties:
+      detected: { type: string, enum: [bool] }
+      sensitivity:
+        type: string
+        enum: [L0_PUBLIC, L1_INTERNAL, L2_CONFIDENTIAL, L3_SECRET, L4_RESTRICTED]
+      recommended_action:
+        type: array
+        minItems: 1

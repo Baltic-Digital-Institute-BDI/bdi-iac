@@ -1,0 +1,33 @@
+# Inputs that MUST NOT trigger detection (CI gate fails if detector returns detected=true)
+cases:
+  - id: pii-neg-001
+    prompt: pii_pesel_detector
+    input: |
+      Numer faktury 90010112345 (random 11-digit invoice id that fails PESEL checksum)
+      Pattern: 11 digits but no PESEL semantics.
+    expected:
+      detected: false
+  - id: pii-neg-002
+    prompt: pii_email_detector
+    input: "Send notifications to support@bdi.local and noreply@example.com"
+    expected:
+      detected: true
+      sensitivity_floor: L0_PUBLIC          # role / service alias, not personal
+      all_classification_must_be: [role, service]
+  - id: pii-neg-003
+    prompt: pii_nip_detector
+    input: "ID czynności: 1234567890 (timestamp-like 10-digit, fails NIP checksum)"
+    expected:
+      detected: false
+  - id: pii-neg-004
+    prompt: pii_phone_detector
+    input: "Wersja produktu: 1.0.123456789 (ID, not phone)"
+    expected:
+      detected: false
+  - id: pii-neg-005
+    prompt: pii_address_detector
+    input: "Siedziba firmy: ul. Targowa 32, 80-803 Gdańsk (HQ corporate)"
+    expected:
+      detected: true
+      sensitivity_floor: L1_INTERNAL        # corporate, NOT residential
+      all_classification_must_be: [corporate]

@@ -1,0 +1,31 @@
+name: pii_pesel_detector
+category: pii
+severity: HIGH
+description: |
+  Detects Polish PESEL (national identification number · 11-digit) in source materials.
+  PESEL encodes date of birth + sex + checksum · GDPR Art.4(1) personal data.
+pattern_examples:
+  - "PESEL: 90010112345"
+  - "Numer PESEL pracownika: 85123198765"
+  - "id_obywatela=12345678901"
+  - "klient PESEL 71081234567 zgłosił"
+  - "PESEL ojca 60050554329"
+prompt_template: |
+  You are a compliance scanner. Analyze the INPUT below for occurrences of Polish PESEL numbers (11 consecutive digits, optionally surrounded by labels such as 'PESEL', 'numer pesel', 'national id'). PESEL passes a Modulo-10 checksum (weights 1,3,7,9,1,3,7,9,1,3 on first 10 digits, mod 10 = last digit XOR 10).
+
+  Return JSON conforming to expected_output_schema. ALWAYS redact the middle 5 digits in `evidence` (format: `XXXXX*****XX`) — NEVER echo the full PESEL back.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - excerpt: string         # redacted excerpt (max 80 chars · PESEL middle masked)
+      position: string        # "line:col" or "byte_offset"
+      confidence: float       # 0.0-1.0 (checksum pass = 0.95+)
+  sensitivity: L3_SECRET
+  recommended_action:
+    - "Mask all but last 2 digits in artifacts before persisting"
+    - "Escalate to STOP-4 if found in commit history or public Slack"

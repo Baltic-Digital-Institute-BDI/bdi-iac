@@ -1,0 +1,61 @@
+# Sample JSON outputs the orchestrator should produce for canonical positive cases.
+# These are illustrative; actual values vary per prompt template.
+samples:
+  - case: pii-pos-001
+    output:
+      detected: true
+      evidence:
+        - excerpt: "PESEL 90010*****45"
+          position: "line:1"
+          confidence: 0.96
+        - excerpt: "ul. Marszałkowska XX, 00-007 Warszawa"
+          position: "line:1"
+          classification: "residential"
+          confidence: 0.91
+        - excerpt: "+48 6XX-***-***"
+          position: "line:2"
+          classification: "personal"
+          confidence: 0.93
+        - excerpt: "ja***@example.pl"
+          position: "line:3"
+          classification: "personal"
+          confidence: 0.88
+      sensitivity: "L3_SECRET"
+      recommended_action:
+        - "Mask all but last 2 digits in artifacts before persisting"
+        - "Escalate to STOP-4 if found in commit history or public Slack"
+
+  - case: secrets-pos-001
+    output:
+      detected: true
+      evidence:
+        - vendor: "anthropic"
+          position: "line:1"
+          length_range: "100-110"
+          placeholder: "<REDACTED_API_KEY>"
+          confidence: 0.99
+      sensitivity: "L4_RESTRICTED"
+      recommended_action:
+        - "STOP-4 immediate"
+        - "Rotate via vendor console; revoke in Supabase Vault"
+        - "Open incident ticket; A5 Shield + STU0 + KR notified"
+        - "Block PR merge if found in PR diff"
+
+  - case: nis2-pos-005
+    output:
+      detected: true
+      evidence:
+        - incident_ref: "2026-05-15-001"
+          sla_class: "early_warning_24h"
+          detected_at: "2026-05-15T09:00:00Z"
+          notified_at: "2026-05-18T10:00:00Z"
+          delta_hours: 73
+          overshoot_hours: 49
+          position: "line:1-3"
+          confidence: 0.98
+      sensitivity: "L2_CONFIDENTIAL"
+      recommended_action:
+        - "STOP-4 if active overdue"
+        - "Notify KR · Mariusz · A5 Shield"
+        - "Trigger ad-hoc CSIRT submission via legal contact channel"
+        - "Document root cause of timeline miss for regulator query response"

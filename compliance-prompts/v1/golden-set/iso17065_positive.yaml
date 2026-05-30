@@ -1,0 +1,31 @@
+cases:
+  - id: iso17065-pos-001
+    prompt: iso17065_impartiality_risk_gap
+    input: "Auditor X audited Client Y in 2024 and again in 2026 · no rotation policy · COI not declared."
+    expected:
+      detected: true
+      gap_type_must_include: [no_rotation, undisclosed_coi]
+  - id: iso17065-pos-002
+    prompt: iso17065_competence_evaluation_gap
+    input: "Auditor file: name only · CPD 4h/year · last witness audit: 2023."
+    expected:
+      detected: true
+      gap_type_must_include: [insufficient_cpd, no_witness]
+  - id: iso17065-pos-003
+    prompt: iso17065_complaint_handling_gap
+    input: "Complaints process: email director · 0 entries in 12 months · not published on website."
+    expected:
+      detected: true
+      gap_type_must_include: [no_public]
+  - id: iso17065-pos-004
+    prompt: iso17065_document_control_gap
+    input: "QMS Manual: no version number · last review date: unknown · multiple copies in circulation."
+    expected:
+      detected: true
+      min_evidence_count: 2
+  - id: iso17065-pos-005
+    prompt: iso17065_management_system_gap
+    input: "Internal audit: ad-hoc · management review last held 2023-Q4 · 5 corrective actions open > 6 months."
+    expected:
+      detected: true
+      gap_type_must_include: [ad_hoc_audit, stale_review, aging_ca]

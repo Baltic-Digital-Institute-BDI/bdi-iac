@@ -1,0 +1,44 @@
+name: nis2_reporting_timeline_violation
+category: nis2
+severity: CRITICAL
+description: |
+  Detects active or historical violations of NIS2 24h/72h/1-month reporting timeline · cross-checks incident timestamps against notification timestamps.
+pattern_examples:
+  - "Incident detected 2026-05-15 09:00 · CSIRT notified 2026-05-18 10:00 (→ 73h post-aware · LATE early warning)"
+  - "Significant incident 2026-04-01 · 72h notification: 2026-04-05 (→ 24h late)"
+  - "Final report due 2026-05-01 · status: in_progress (→ overdue)"
+  - "Cross-border impact identified: PL + DE · regulator notified: PL only"
+prompt_template: |
+  You are a NIS2 compliance scanner. Analyze the INPUT below for active or historical reporting timeline violations:
+
+  SLAs:
+  - **24h early warning** from "becoming aware of significant incident" (initial estimate, suspected cause if known, cross-border indicator)
+  - **72h notification** with assessment, IoCs, impact severity
+  - **30-day final report** with root cause, remediation, lessons learned
+  - **Cross-border**: notify each affected Member State's CSIRT
+
+  Parse timestamps (ISO 8601 or `YYYY-MM-DD HH:MM` formats). Compute delta from `detected_at` (or `aware_at`) to each notification timestamp. Flag any delta exceeding SLA.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - incident_ref: string
+      sla_class: string             # early_warning_24h | notification_72h | final_report_30d | cross_border
+      detected_at: string
+      notified_at: string
+      delta_hours: int
+      overshoot_hours: int
+      position: string
+      confidence: float
+  sensitivity: L2_CONFIDENTIAL
+  recommended_action:
+    - "STOP-4 if active overdue"
+    - "Notify KR · Mariusz · A5 Shield"
+    - "Trigger ad-hoc CSIRT submission via legal contact channel"
+    - "Document root cause of timeline miss for regulator query response"

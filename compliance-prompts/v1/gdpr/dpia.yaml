@@ -1,0 +1,42 @@
+name: gdpr_dpia_missing
+category: gdpr
+severity: HIGH
+description: |
+  Detects missing or stale DPIA (Data Protection Impact Assessment, Art. 35) for high-risk processing · AI/ML · large-scale special-category · systematic monitoring.
+pattern_examples:
+  - "New AI feature: emotion detection on user video · DPIA: not started"
+  - "Biometric authentication module · risk assessment: 'internal review only'"
+  - "Behavioral analytics on minors · DPIA: 2022 (stale)"
+  - "Cross-border transfer to non-adequacy country · TIA + DPIA: missing"
+  - "Profiling for credit scoring · DPIA: not documented"
+prompt_template: |
+  You are a GDPR compliance scanner. Analyze the INPUT below for DPIA gaps under Art. 35:
+
+  DPIA REQUIRED when processing is:
+  - Systematic and extensive evaluation including profiling with legal/significant effects
+  - Large-scale special category data (Art. 9) or criminal records (Art. 10)
+  - Systematic monitoring of publicly accessible areas (CCTV at scale)
+  - On EDPB Art. 35 lists (innovative tech · biometrics · AI inference · location tracking · vulnerable subjects incl. minors · large-scale combination)
+
+  Flag missing DPIA, stale (>24 months without re-review on material change), inadequate scope.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - processing_activity: string
+      trigger_basis: string         # profiling | special_cat | systematic_monitoring | innovative_tech | minors | other
+      gap_type: string              # missing | stale | inadequate_scope
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Open DPIA tracker entry in compliance schema"
+    - "Engage DPO / Mariusz for DPIA template + workshop"
+    - "Block production launch until DPIA signed off (STOP-3)"

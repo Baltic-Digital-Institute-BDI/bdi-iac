@@ -1,0 +1,41 @@
+name: iso17065_management_system_gap
+category: iso17065
+severity: MEDIUM
+description: |
+  Detects gaps in ISO/IEC 17065 §8 management system requirements · Option A (full IMS) or Option B (aligned to ISO 9001) · internal audits · management review · improvement.
+pattern_examples:
+  - "Internal audit programme: ad-hoc"
+  - "Management review: last held 2023-Q4 (stale, annual minimum)"
+  - "Corrective action register: 5 open items > 6 months old"
+  - "Continuous improvement: no KPI targets set"
+  - "Risk register and opportunities (8.5): missing"
+prompt_template: |
+  You are an ISO/IEC 17065 compliance scanner. Analyze the INPUT below for management-system gaps under §8:
+
+  Required (Option A baseline):
+  - Documented management system covering: policies · objectives · procedures · records · risks/opportunities
+  - Internal audit programme covering all clauses within a cycle (max 3 years)
+  - Annual management review (inputs per §8.5: audit results · complaints · KPIs · risks · CA effectiveness)
+  - Corrective action register with root cause analysis · effectiveness verification
+  - KPI definition + targets + tracking
+
+  Flag ad-hoc audits, stale review, aging CAs, missing KPIs, missing risk register.
+
+  Return JSON conforming to expected_output_schema.
+
+  INPUT:
+  ---
+  {{content}}
+  ---
+expected_output_schema:
+  detected: bool
+  evidence:
+    - gap_type: string                # ad_hoc_audit | stale_review | aging_ca | no_kpi | no_risk_register
+      excerpt: string
+      position: string
+      confidence: float
+  sensitivity: L1_INTERNAL
+  recommended_action:
+    - "Schedule annual management review (next Friday cadence post-PI sekcja 12 Tier 5)"
+    - "Close aging CAs or document escalation"
+    - "Define and publish KPI dashboard (cross-link to core.kpi_dashboard_v in bdi-prod)"

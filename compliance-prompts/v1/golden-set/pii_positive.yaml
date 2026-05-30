@@ -1,0 +1,43 @@
+# Inputs that MUST trigger detection (CI gate fails if detector returns detected=false)
+cases:
+  - id: pii-pos-001
+    prompt: pii_pesel_detector
+    input: |
+      Klient: Jan Kowalski, PESEL 90010112345, ul. Marszałkowska 12/5, 00-007 Warszawa.
+      Numer telefonu: +48 600 123 456.
+      Email: jan.kowalski@example.pl
+    expected:
+      detected: true
+      min_evidence_count: 1
+      sensitivity_floor: L3_SECRET
+  - id: pii-pos-002
+    prompt: pii_nip_detector
+    input: |
+      Faktura dla ABC sp. z o.o., NIP 5252344078, REGON 363334932, ul. Targowa 32, 80-803 Gdańsk.
+    expected:
+      detected: true
+      min_evidence_count: 1
+  - id: pii-pos-003
+    prompt: pii_email_detector
+    input: "Personal contact: anna.nowak+work@gmail.com"
+    expected:
+      detected: true
+      sensitivity_floor: L2_CONFIDENTIAL
+  - id: pii-pos-004
+    prompt: pii_phone_detector
+    input: "Mobile: 501 234 567, Mom's: +48 600 111 222"
+    expected:
+      detected: true
+      min_evidence_count: 2
+  - id: pii-pos-005
+    prompt: pii_address_detector
+    input: "Adres zamieszkania klienta: ul. Sopocka 8 m. 4, 80-001 Gdańsk · PESEL 71081234567"
+    expected:
+      detected: true
+      sensitivity_floor: L2_CONFIDENTIAL
+  - id: pii-pos-006
+    prompt: pii_regon_detector
+    input: "REGON 363334932 + PESEL 90010112345 (joinable)"
+    expected:
+      detected: true
+      cooccurs_with_personal_data_required: true
