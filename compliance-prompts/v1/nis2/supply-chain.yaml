@@ -40,3 +40,8 @@ expected_output_schema:
     - "Add to vendor risk backlog · A5 Shield owner"
     - "Trigger DocuSign DPA refresh if contract gap"
     - "Schedule quarterly access entitlement review"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

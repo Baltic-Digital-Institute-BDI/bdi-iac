@@ -44,3 +44,8 @@ expected_output_schema:
     - "Generate TIA for each non-adequacy transfer"
     - "Migrate old SCCs to 2021/914 modules"
     - "Verify DPF certification at dataprivacyframework.gov for each US recipient"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

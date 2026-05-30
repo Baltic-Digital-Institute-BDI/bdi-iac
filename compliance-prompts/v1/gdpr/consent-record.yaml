@@ -39,3 +39,8 @@ expected_output_schema:
     - "Update consent UX (opt-in default, granular toggles, persistent withdrawal control)"
     - "Provision consent log table (immutable, append-only)"
     - "Add age gate for minor-targeting touch points"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

@@ -40,3 +40,8 @@ expected_output_schema:
     - "Add DSR workflow to n8n (intake → triage → fulfillment → log)"
     - "Provision DSR endpoint per product · self-serve where feasible"
     - "Document SLA in privacy notice"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

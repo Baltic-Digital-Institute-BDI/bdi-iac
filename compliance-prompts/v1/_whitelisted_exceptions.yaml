@@ -1,0 +1,103 @@
+# Compliance Agent AI · Whitelisted Exceptions Registry (SSOT)
+# Workflow Layer B (n8n) reads this file BEFORE Slack alert · matches detected entities
+# against whitelisted patterns · if match → log_as_known_exception · NIE alert
+#
+# Authority: KR explicit (STOP-6 cross-domain sign-off required for entries)
+# Append-only · NEVER delete entries · use status: revoked to deprecate
+# Re-review cadence: monthly (per BDI-SOB-PORTFOLIO PI v3.0 BRIDGE-001 conditions)
+
+schema_version: "1.0"
+last_review: "2026-05-30"
+review_cadence: "monthly · first Friday"
+ssot_for: ["compliance-prompts/v1/*/*.yaml", "n8n module-compliance-*.json workflows"]
+
+exceptions:
+  - id: BRIDGE-001
+    title: "BDI Finance Hub ↔ NGO Kaszuby cross-domain data flow"
+    status: CONFIRMED
+    decision_ref: D-SOB-001
+    decision_date: "2026-05-30"
+    decision_authority: kr_prime
+    decision_severity: HIGH
+    scope: |
+      BDI-FH (BDI Finance Hub) read access to NGO-OPS (NGO Kaszuby) operational data.
+      KR explicit override of D-STU-075 one-way matrix dla NGO-OPS domain.
+      Cross-domain STOP-6 zone · KR personally accountable per RODO art. 28-29.
+
+    # Pattern matching (workflow Layer B uses these to identify whitelisted finding)
+    detection_patterns:
+      source_entities:
+        - "agent.product.bdi-finance-hub"
+        - "agent.product.BDI-FH"
+        - "BDI Finance Hub"
+        - "bdi-finance-hub"
+      target_entities:
+        - "NGO-OPS"
+        - "NGO Kaszuby"
+        - "stowarzyszenie-kaszuby"
+        - "agent.cluster.SOB.NGO-Kaszuby"
+      cross_border: false   # both Poland · NIE EU/EEA cross-border per GDPR Chapter V
+      cross_domain: true    # BDI-GOV ↔ NGO-OPS · STOP-6 normally triggers
+
+    # Which prompts can trigger false-positive
+    affected_prompts:
+      - compliance-prompts/v1/gdpr/cross-border-transfer.yaml
+      - compliance-prompts/v1/gdpr/data-subject-rights.yaml
+      - compliance-prompts/v1/gdpr/consent-record.yaml
+      - compliance-prompts/v1/gdpr/data-retention.yaml
+      - compliance-prompts/v1/gdpr/dpia.yaml
+      - compliance-prompts/v1/pii/pesel.yaml
+      - compliance-prompts/v1/pii/email.yaml
+      - compliance-prompts/v1/pii/phone.yaml
+      - compliance-prompts/v1/pii/address.yaml
+      - compliance-prompts/v1/pii/nip.yaml
+      - compliance-prompts/v1/pii/regon.yaml
+      - compliance-prompts/v1/nis2/supply-chain.yaml
+      - compliance-prompts/v1/nis2/risk-assessment.yaml
+      - compliance-prompts/v1/iso17065/impartiality-risk.yaml
+
+    # Conditions under which exception remains valid
+    conditions:
+      - "Monthly A4 (Sentinel) audit · cross-domain data flow review · ongoing"
+      - "Q1 2026 KR report · narrative summary do KR · scheduled"
+      - "GDPR-HANDLING-RUNBOOK_v1.0.md compliance · referenced"
+      - "BDI-SOB-PORTFOLIO PI v3.0 BRIDGE-001 section · ratified"
+      - "role.hum.R-Compliance.md Approved exceptions · onboarding mandatory read"
+
+    # Workflow response when pattern matches
+    response_when_detected:
+      action: log_as_known_exception
+      audit_log_action: "compliance.scan.whitelisted_exception_hit"
+      audit_log_table: core.audit_log
+      slack_alert: false
+      cp_message_emit: false        # NIE emit STOP_ESCALATION
+      cp_dlq_emit: false            # NIE emit HITL gate
+      retention_class: 7y           # audit trail retained 7 years
+      log_payload:
+        exception_id: BRIDGE-001
+        decision_ref: D-SOB-001
+        matched_finding_id: "{finding_uuid}"
+        matched_module: "{module_name}"
+        matched_severity: "{finding_severity}"
+
+    # Revocation path
+    revocation:
+      authority: kr_prime
+      mechanism: "set status: revoked · append revoked_at + revoked_reason · NIE delete"
+      effect: "workflow Layer B stops matching · subsequent detections alert normally"
+
+    # Cross-references
+    references:
+      - "DECISION-LOG.yaml D-SOB-001 (CONFIRMED 2026-05-30 EOD)"
+      - "BDI-SOB-PORTFOLIO/PROJECT-INSTRUCTIONS_v3.0.md BRIDGE-001 section"
+      - "L3_KNOWLEDGE/Compliance/GDPR-HANDLING-RUNBOOK_v1.0.md"
+      - "PI v4.1 STOP-6 cross-domain definition"
+      - "AP-66 NO-SCHEMA-FABRICATION (meta-schema updated to permit this field)"
+
+# Append-only audit log of registry changes
+changelog:
+  - date: "2026-05-30"
+    actor: agent.specialist.CCS (STU0 dispatch · BRIDGE-001 whitelist)
+    action: "Initial entry · BRIDGE-001 CONFIRMED added post D-SOB-001 KR sign-off"
+    decision_ref: D-STU-148
+    pr_ref: "PR · compliance-bridge-001-exception"

@@ -40,3 +40,8 @@ expected_output_schema:
     - "Add retention column to Records of Processing Activity (RoPA)"
     - "Provision deletion/anonymization workflow (n8n cron)"
     - "Document legal basis for any retention > 1 year"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

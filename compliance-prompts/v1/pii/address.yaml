@@ -36,3 +36,8 @@ expected_output_schema:
   sensitivity: L2_CONFIDENTIAL  # baseline residential; corporate → L1_INTERNAL
   recommended_action:
     - "Residential addresses MUST be redacted in artifacts shared beyond audit perimeter"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml
