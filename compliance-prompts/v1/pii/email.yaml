@@ -37,3 +37,8 @@ expected_output_schema:
   sensitivity: L2_CONFIDENTIAL  # orchestrator downgrades when all matches are role/service
   recommended_action:
     - "Mask personal emails in artifacts (preview, search results, exports)"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

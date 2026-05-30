@@ -48,3 +48,8 @@ expected_output_schema:
     - "Map each gap to BDI ISMS control owner"
     - "Open improvement plan with target close date <= next quarterly review"
     - "Cross-reference ISO 27001 control mapping if dual-certified"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

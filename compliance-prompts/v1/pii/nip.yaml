@@ -33,3 +33,8 @@ expected_output_schema:
   sensitivity: L2_CONFIDENTIAL   # default; orchestrator overrides to L1_INTERNAL if !is_natural_person
   recommended_action:
     - "If natural_person=true and surfaces in public artifact → STOP-4 (PII Shield A5)"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

@@ -29,3 +29,8 @@ expected_output_schema:
   recommended_action:
     - "Mask all but last 2 digits in artifacts before persisting"
     - "Escalate to STOP-4 if found in commit history or public Slack"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

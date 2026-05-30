@@ -40,3 +40,8 @@ expected_output_schema:
     - "Open finding in cert-body QMS"
     - "Schedule impartiality committee meeting within 30 days"
     - "Implement auditor rotation per ISO 17065 + IAF MD 22"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

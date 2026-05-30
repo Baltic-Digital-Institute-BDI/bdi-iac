@@ -36,3 +36,8 @@ expected_output_schema:
   sensitivity: L2_CONFIDENTIAL
   recommended_action:
     - "Mask personal phones in artifacts and Slack messages"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

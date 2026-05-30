@@ -34,3 +34,8 @@ expected_output_schema:
   sensitivity: L1_INTERNAL    # baseline; orchestrator escalates to L2_CONFIDENTIAL when cooccurs_with_personal_data
   recommended_action:
     - "When cooccurs_with_personal_data=true → bundle with PESEL/NIP redaction"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml

@@ -40,3 +40,8 @@ expected_output_schema:
     - "Open DPIA tracker entry in compliance schema"
     - "Engage DPO / Mariusz for DPIA template + workshop"
     - "Block production launch until DPIA signed off (STOP-3)"
+
+whitelisted_exceptions:
+  - id: BRIDGE-001
+    decision_ref: D-SOB-001
+    registry: compliance-prompts/v1/_whitelisted_exceptions.yaml
