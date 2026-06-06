@@ -1,0 +1,108 @@
+# Sync SUPABASE_SERVICE_ROLE_KEY z Supabase Management API do Vercel env vars
+# Use case: PROD magic link generation fails z "Invalid API key" gdy Vercel ma stary/encrypted wrapper
+# Strategy: SUPABASE_ACCESS_TOKEN reads /v1/projects/{ref}/api-keys → updates Vercel env var
+
+name: "Sync Supabase Service Role Key → Vercel"
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Target Vercel env"
+        required: true
+        type: choice
+        options: [dev, test, prod, all]
+      vercel_project_id:
+        description: "Vercel project ID"
+        required: true
+        default: "prj_owIhZoVR32PYQQTjjrfoazw4AALm"
+      vercel_team_id:
+        description: "Vercel team ID"
+        required: true
+        default: "team_ug381E6GRUIvq44iRBLlxTO9"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: "Sync key"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve project ref + Vercel target
+        id: resolve
+        run: |
+          case "${{ inputs.env }}" in
+            dev)  REF="jiffxoseckvwlnskbuyk"; TARGET="development"; BRANCH=""; PREVIEW_TARGET="" ;;
+            test) REF="adsdaehvvnwknjushshn"; TARGET="preview";    BRANCH="test"; PREVIEW_TARGET="preview" ;;
+            prod) REF="vpbbguexygbqovsjfsab"; TARGET="production"; BRANCH=""; PREVIEW_TARGET="" ;;
+            *) echo "use single env"; exit 1 ;;
+          esac
+          echo "ref=$REF" >> $GITHUB_OUTPUT
+          echo "target=$TARGET" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Pulling service_role for $REF → Vercel target=$TARGET branch=$BRANCH"
+
+      - name: Fetch service_role JWT from Supabase
+        id: fetch
+        env:
+          SBP: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ steps.resolve.outputs.ref }}
+        run: |
+          RESP=$(curl -fsSL -H "Authorization: Bearer $SBP" "https://api.supabase.com/v1/projects/$REF/api-keys?reveal=true")
+          SR=$(echo "$RESP" | jq -r '.[] | select(.name=="service_role") | .api_key')
+          if [ -z "$SR" ] || [ "$SR" = "null" ]; then
+            echo "::error::No service_role key returned"
+            echo "$RESP" | jq -r '.[].name' | head -5
+            exit 1
+          fi
+          echo "::add-mask::$SR"
+          echo "jwt=$SR" >> $GITHUB_OUTPUT
+          echo "service_role JWT pulled (length: ${#SR}, prefix: ${SR:0:20}...)"
+
+      - name: Find + DELETE existing Vercel env var
+        env:
+          VTOK: ${{ secrets.VERCEL_API_TOKEN }}
+        run: |
+          PROJ="${{ inputs.vercel_project_id }}"
+          TEAM="${{ inputs.vercel_team_id }}"
+          TARGET="${{ steps.resolve.outputs.target }}"
+          BRANCH="${{ steps.resolve.outputs.branch }}"
+          
+          ENV_IDS=$(curl -fsSL -H "Authorization: Bearer $VTOK" \
+            "https://api.vercel.com/v9/projects/$PROJ/env?teamId=$TEAM" | jq -r \
+            --arg t "$TARGET" --arg b "$BRANCH" \
+            '.envs[] | select(.key=="SUPABASE_SERVICE_ROLE_KEY") | select(.target | index($t)) | select(($b=="" and (.gitBranch==null or .gitBranch=="")) or .gitBranch==$b) | .id')
+          
+          for ID in $ENV_IDS; do
+            echo "Deleting old env var $ID"
+            curl -fsSL -X DELETE -H "Authorization: Bearer $VTOK" \
+              "https://api.vercel.com/v9/projects/$PROJ/env/$ID?teamId=$TEAM" | jq -r '.key // "deleted"'
+          done
+
+      - name: CREATE Vercel env var with fresh JWT
+        env:
+          VTOK: ${{ secrets.VERCEL_API_TOKEN }}
+          JWT: ${{ steps.fetch.outputs.jwt }}
+        run: |
+          PROJ="${{ inputs.vercel_project_id }}"
+          TEAM="${{ inputs.vercel_team_id }}"
+          TARGET="${{ steps.resolve.outputs.target }}"
+          BRANCH="${{ steps.resolve.outputs.branch }}"
+          
+          if [ -n "$BRANCH" ]; then
+            PAYLOAD=$(jq -n --arg v "$JWT" --arg t "$TARGET" --arg b "$BRANCH" '{key:"SUPABASE_SERVICE_ROLE_KEY",value:$v,type:"plain",target:[$t],gitBranch:$b}')
+          else
+            PAYLOAD=$(jq -n --arg v "$JWT" --arg t "$TARGET" '{key:"SUPABASE_SERVICE_ROLE_KEY",value:$v,type:"plain",target:[$t]}')
+          fi
+          curl -fsSL -X POST -H "Authorization: Bearer $VTOK" -H "Content-Type: application/json" \
+            "https://api.vercel.com/v10/projects/$PROJ/env?teamId=$TEAM" \
+            -d "$PAYLOAD" | jq -r '"  ✅ Created · target=" + (.target|tostring) + " · gitBranch=" + (.gitBranch//"-")'
+
+      - name: Trigger redeploy via empty commit
+        env:
+          GHTOK: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Note: redeploy needs to happen via push to corresponding branch in bdi-ekancelaria repo
+          # User triggers manual redeploy via push (skip here - env var is immediately usable on next deploy)
+          echo "Env var updated · next deploy will use new JWT · manual redeploy may be needed"
