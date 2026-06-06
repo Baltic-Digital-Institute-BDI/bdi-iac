@@ -1,0 +1,128 @@
+# Apply Supabase Auth uri_allow_list via Management API (DIRECT PATCH)
+# Bypass Terraform (avoid google_secret clobber) · uses bdi-iac secret SUPABASE_ACCESS_TOKEN
+# Trigger: workflow_dispatch (manual · per env)
+# Scope: only uri_allow_list field · merge with existing list (no destructive overwrite)
+
+name: "Apply Supabase Auth Allow-List"
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Environment (dev/test/prod)"
+        required: true
+        type: choice
+        options: [dev, test, prod]
+      extra_urls:
+        description: "Comma-separated URLs to APPEND to uri_allow_list (idempotent if already present)"
+        required: true
+        default: "https://t4l.bdi.technology/**,https://dev.t4l.bdi.technology/**,https://test.t4l.bdi.technology/**,https://test.t4l.bdi.technology/auth/callback"
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: "Apply allow-list"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve project_ref
+        id: resolve
+        run: |
+          case "${{ inputs.env }}" in
+            dev)  PROJECT_REF="jiffxoseckvwlnskbuyk" ;;
+            test) PROJECT_REF="adsdaehvvnwknjushshn" ;;
+            prod) PROJECT_REF="vpbbguexygbqovsjfsab" ;;
+            *) echo "Invalid env"; exit 1 ;;
+          esac
+          echo "project_ref=$PROJECT_REF" >> $GITHUB_OUTPUT
+          echo "Project: $PROJECT_REF (env: ${{ inputs.env }})"
+
+      - name: Fetch current uri_allow_list
+        id: current
+        env:
+          SBP: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ steps.resolve.outputs.project_ref }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer $SBP" \
+            "https://api.supabase.com/v1/projects/$REF/config/auth" > /tmp/current.json
+          jq -r '.uri_allow_list' /tmp/current.json > /tmp/current_list.txt
+          jq -r '.site_url' /tmp/current.json > /tmp/site_url.txt
+          echo "=== Current uri_allow_list ==="
+          cat /tmp/current_list.txt
+          echo ""
+          echo "=== Current site_url ==="
+          cat /tmp/site_url.txt
+
+      - name: Merge + dedup allow-list
+        id: merge
+        run: |
+          CURRENT=$(cat /tmp/current_list.txt)
+          EXTRA="${{ inputs.extra_urls }}"
+          # Split current (comma-sep) + extra (comma-sep) → dedup → re-join
+          python3 <<PY > /tmp/merged_list.txt
+          current = "$CURRENT".split(",") if "$CURRENT" else []
+          extra = "$EXTRA".split(",")
+          # Preserve order: existing first, then new (skip duplicates)
+          seen = set()
+          merged = []
+          for u in current + extra:
+              u = u.strip()
+              if u and u not in seen:
+                  seen.add(u)
+                  merged.append(u)
+          print(",".join(merged))
+          PY
+          echo "=== Merged uri_allow_list ==="
+          cat /tmp/merged_list.txt
+          echo ""
+          DELTA=$(python3 -c "
+          before=set('$CURRENT'.split(','))
+          after=set(open('/tmp/merged_list.txt').read().strip().split(','))
+          added=sorted(after-before)
+          print('ADDED:',added if added else 'none (idempotent · all URLs already present)')
+          ")
+          echo "$DELTA"
+
+      - name: PATCH uri_allow_list
+        env:
+          SBP: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ steps.resolve.outputs.project_ref }}
+        run: |
+          MERGED=$(cat /tmp/merged_list.txt)
+          PAYLOAD=$(python3 -c "import json; print(json.dumps({'uri_allow_list': '$MERGED'}))")
+          echo "Payload: $PAYLOAD"
+          curl -fsSL -X PATCH \
+            -H "Authorization: Bearer $SBP" \
+            -H "Content-Type: application/json" \
+            "https://api.supabase.com/v1/projects/$REF/config/auth" \
+            -d "$PAYLOAD" > /tmp/patch_response.json
+          echo "=== PATCH response ==="
+          jq . /tmp/patch_response.json | head -30
+
+      - name: Verify post-PATCH
+        env:
+          SBP: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ steps.resolve.outputs.project_ref }}
+        run: |
+          curl -fsSL -H "Authorization: Bearer $SBP" \
+            "https://api.supabase.com/v1/projects/$REF/config/auth" \
+            | jq -r '.uri_allow_list' > /tmp/verified_list.txt
+          echo "=== Verified uri_allow_list post-PATCH ==="
+          cat /tmp/verified_list.txt
+          echo ""
+          # Confirm new URLs present
+          MISSING=0
+          IFS=',' read -ra URLS <<< "${{ inputs.extra_urls }}"
+          for url in "${URLS[@]}"; do
+            url_trim=$(echo "$url" | xargs)
+            if grep -q -- "$url_trim" /tmp/verified_list.txt; then
+              echo "✅ Present: $url_trim"
+            else
+              echo "❌ MISSING: $url_trim"
+              MISSING=1
+            fi
+          done
+          [ $MISSING -eq 1 ] && exit 1
+          echo ""
+          echo "✅ All extra_urls present in uri_allow_list"
