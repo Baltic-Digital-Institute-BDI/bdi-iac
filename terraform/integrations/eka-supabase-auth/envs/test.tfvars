@@ -12,9 +12,12 @@ all_redirect_urls = [
   # Lab Console (existing — DO NOT REMOVE)
   "https://test-console.bdihub.pl/**",
   "https://test-console.bdihub.pl/auth/callback",
-  # e-Kancelaria (NEW)
+  # e-Kancelaria (LEGACY · 12mo retention sunset 2027-06-05 per D-T4L-001)
   "https://test.ekancelaria.bdi.technology/**",
   "https://test.ekancelaria.bdi.technology/auth/callback",
+  # T4L (NEW · primary brand · D-T4L-001 · 2026-06-05)
+  "https://test.t4l.bdi.technology/**",
+  "https://test.t4l.bdi.technology/auth/callback",
 ]
 
 disable_signup = true

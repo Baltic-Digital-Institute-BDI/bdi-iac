@@ -17,8 +17,10 @@ all_redirect_urls = [
   # Lab Console legacy Vercel previews (existing — DO NOT REMOVE)
   "https://bdi-lab-console.vercel.app/**",
   "https://bdi-lab-console-bdi.vercel.app/**",
-  # e-Kancelaria
+  # e-Kancelaria (LEGACY · 12mo retention sunset 2027-06-05 per D-T4L-001)
   "https://ekancelaria.bdi.technology/**",
+  # T4L (NEW · primary brand · D-T4L-001 · 2026-06-05)
+  "https://t4l.bdi.technology/**",
 ]
 
 disable_signup = true

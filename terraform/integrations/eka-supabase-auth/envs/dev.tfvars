@@ -16,8 +16,10 @@ all_redirect_urls = [
   # Legacy Vercel / other (existing — DO NOT REMOVE)
   "https://bdi-offer-grant-finance.vercel.app/**",
   "http://localhost:3000/**",
-  # e-Kancelaria
+  # e-Kancelaria (LEGACY · 12mo retention sunset 2027-06-05 per D-T4L-001)
   "https://dev.ekancelaria.bdi.technology/**",
+  # T4L (NEW · primary brand · D-T4L-001 · 2026-06-05)
+  "https://dev.t4l.bdi.technology/**",
 ]
 
 disable_signup = false  # DEV: allow signup for testing
